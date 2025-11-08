@@ -32,21 +32,41 @@ class Booking {
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
+    // Helper function to extract ID from string or object
+    String extractId(dynamic value) {
+      if (value == null) return '';
+      if (value is String) return value;
+      if (value is Map) return value['_id']?.toString() ?? '';
+      return value.toString();
+    }
+
     return Booking(
-      id: json['_id'] ?? '',
-      customerId: json['customerId'] ?? '',
-      serviceId: json['serviceId'] ?? '',
-      providerId: json['providerId'] ?? '',
-      customerDetails: CustomerDetails.fromJson(json['customerDetails'] ?? {}),
-      reservationDate: DateTime.parse(json['reservationDate'] ?? DateTime.now().toIso8601String()),
-      status: json['status'] ?? 'pending',
+      id: json['_id']?.toString() ?? '',
+      customerId: extractId(json['customerId']),
+      serviceId: extractId(json['serviceId']),
+      providerId: extractId(json['providerId']),
+      customerDetails: CustomerDetails.fromJson(
+        json['customerDetails'] is Map 
+            ? Map<String, dynamic>.from(json['customerDetails'] as Map)
+            : {}
+      ),
+      reservationDate: DateTime.parse(
+        json['reservationDate'] ?? DateTime.now().toIso8601String()
+      ),
+      status: json['status']?.toString() ?? 'pending',
       totalAmount: (json['totalAmount'] ?? 0).toDouble(),
-      hoursBooked: json['hoursBooked'] ?? 1,
-      cancellationReason: json['cancellationReason'],
-      cancelledBy: json['cancelledBy'],
-      canCancel: json['canCancel'] ?? true,
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
+      hoursBooked: (json['hoursBooked'] ?? 1) is int 
+          ? json['hoursBooked'] 
+          : int.tryParse(json['hoursBooked'].toString()) ?? 1,
+      cancellationReason: json['cancellationReason']?.toString(),
+      cancelledBy: json['cancelledBy']?.toString(),
+      canCancel: json['canCancel'] == true,
+      createdAt: DateTime.parse(
+        json['createdAt'] ?? DateTime.now().toIso8601String()
+      ),
+      updatedAt: DateTime.parse(
+        json['updatedAt'] ?? DateTime.now().toIso8601String()
+      ),
     );
   }
 
@@ -83,9 +103,9 @@ class CustomerDetails {
 
   factory CustomerDetails.fromJson(Map<String, dynamic> json) {
     return CustomerDetails(
-      name: json['name'] ?? '',
-      phoneNumber: json['phoneNumber'] ?? '',
-      exactAddress: json['exactAddress'] ?? '',
+      name: json['name']?.toString() ?? '',
+      phoneNumber: json['phoneNumber']?.toString() ?? '',
+      exactAddress: json['exactAddress']?.toString() ?? '',
     );
   }
 
