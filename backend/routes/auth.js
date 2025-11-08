@@ -40,7 +40,7 @@ router.post('/send-otp', async (req, res) => {
       // Create temporary user record for OTP
       const tempUser = new User({
         email,
-        password: 'temp', // Will be updated during verification
+        password: 'temppass123', // Temporary password (min 6 chars), will be updated during verification
         emailOTP: otp,
         otpExpiry: otpExpiry,
         isEmailVerified: false
