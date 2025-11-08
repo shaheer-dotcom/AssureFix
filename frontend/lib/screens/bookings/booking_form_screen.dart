@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 import '../../models/service.dart';
 import '../../providers/booking_provider.dart';
@@ -467,42 +470,38 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       );
     }
 
-    // Ensure providerId is a string
-    String providerId = widget.service.providerId;
-    if (providerId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Service provider information is missing'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     final bookingData = {
       'serviceId': widget.service.id,
-      'providerId': providerId,
       'customerDetails': {
         'name': _nameController.text.trim(),
         'phoneNumber': _phoneController.text.trim(),
         'exactAddress': _addressController.text.trim(),
       },
       'reservationDate': reservationDateTime.toIso8601String(),
-      'totalAmount': widget.service.price.toInt(),
       'hoursBooked': 1, // Default to 1 hour, can be made configurable
     };
 
     final success = await bookingProvider.createBooking(bookingData);
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Service booked successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      // Navigate back to main screen or booking history
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      // Create chat conversation for this booking
+      try {
+        await _createChatConversation();
+      } catch (e) {
+        print('Failed to create chat: $e');
+        // Don't fail the booking if chat creation fails
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Service booked successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Navigate back to main screen or booking history
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -510,6 +509,33 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _createChatConversation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    
+    if (token == null) return;
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:5000/api/chat/create'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'serviceId': widget.service.id,
+          'providerId': widget.service.providerId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print('Chat conversation created successfully');
+      }
+    } catch (e) {
+      print('Error creating chat: $e');
     }
   }
 }
