@@ -74,7 +74,9 @@ class EmailService {
       return true;
     } catch (error) {
       console.error('❌ Error sending OTP email:', error);
-      throw new Error('Failed to send verification email');
+      console.log('⚠️  Email sending failed, but OTP is available in console above');
+      // Don't throw error - allow OTP to be used from console
+      return false;
     }
   }
 

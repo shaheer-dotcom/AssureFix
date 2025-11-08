@@ -48,18 +48,21 @@ router.post('/send-otp', async (req, res) => {
       await tempUser.save();
     }
 
-    // Send OTP email
-    await emailService.sendOTPEmail(email, otp);
-
-    console.log('OTP sent successfully to:', email);
+    // Send OTP email (don't fail if email sending fails)
+    try {
+      await emailService.sendOTPEmail(email, otp);
+      console.log('✅ OTP sent successfully to:', email);
+    } catch (emailError) {
+      console.log('⚠️  Email sending failed, but OTP is saved. Check console for OTP.');
+    }
 
     res.json({
-      message: 'Verification code sent to your email',
+      message: 'Verification code sent. Check your email or console for OTP.',
       email: email
     });
   } catch (error) {
     console.error('Send OTP error:', error);
-    res.status(500).json({ message: 'Failed to send verification code' });
+    res.status(500).json({ message: error.message || 'Failed to send verification code' });
   }
 });
 
