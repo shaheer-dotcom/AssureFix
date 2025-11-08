@@ -13,6 +13,7 @@ class Service {
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final Map<String, dynamic>? providerInfo; // Provider details
 
   Service({
     required this.id,
@@ -29,17 +30,35 @@ class Service {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    this.providerInfo,
   });
+
+  String get providerName {
+    if (providerInfo != null && providerInfo!['profile'] != null) {
+      return providerInfo!['profile']['name'] ?? 'Service Provider';
+    }
+    return 'Service Provider';
+  }
+
+  String get providerPhone {
+    if (providerInfo != null && providerInfo!['profile'] != null) {
+      return providerInfo!['profile']['phoneNumber'] ?? '';
+    }
+    return '';
+  }
 
   factory Service.fromJson(Map<String, dynamic> json) {
     try {
       // Handle providerId which might be a string or an object
       String providerId = '';
+      Map<String, dynamic>? providerInfo;
+      
       if (json['providerId'] != null) {
         if (json['providerId'] is String) {
           providerId = json['providerId'];
         } else if (json['providerId'] is Map) {
-          providerId = json['providerId']['_id']?.toString() ?? '';
+          providerInfo = Map<String, dynamic>.from(json['providerId'] as Map);
+          providerId = providerInfo['_id']?.toString() ?? '';
         } else {
           providerId = json['providerId'].toString();
         }
@@ -60,6 +79,7 @@ class Service {
         isActive: json['isActive'] == true,
         createdAt: _parseDateTime(json['createdAt']),
         updatedAt: _parseDateTime(json['updatedAt']),
+        providerInfo: providerInfo,
       );
     } catch (e) {
       rethrow;

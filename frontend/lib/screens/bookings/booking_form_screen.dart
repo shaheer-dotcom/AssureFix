@@ -467,16 +467,28 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       );
     }
 
+    // Ensure providerId is a string
+    String providerId = widget.service.providerId;
+    if (providerId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Service provider information is missing'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final bookingData = {
       'serviceId': widget.service.id,
-      'providerId': widget.service.providerId,
+      'providerId': providerId,
       'customerDetails': {
         'name': _nameController.text.trim(),
         'phoneNumber': _phoneController.text.trim(),
         'exactAddress': _addressController.text.trim(),
       },
       'reservationDate': reservationDateTime.toIso8601String(),
-      'totalAmount': widget.service.price,
+      'totalAmount': widget.service.price.toInt(),
       'hoursBooked': 1, // Default to 1 hour, can be made configurable
     };
 

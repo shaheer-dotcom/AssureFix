@@ -169,7 +169,7 @@ class ServiceDetailScreen extends StatelessWidget {
                         radius: 24,
                         backgroundColor: Theme.of(context).primaryColor,
                         child: Text(
-                          service.providerId.substring(0, 1).toUpperCase(),
+                          service.providerName.substring(0, 1).toUpperCase(),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -178,20 +178,22 @@ class ServiceDetailScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Service Provider',
-                              style: TextStyle(
+                              service.providerName,
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                             Text(
-                              'Professional service provider',
-                              style: TextStyle(
+                              service.providerPhone.isNotEmpty 
+                                  ? service.providerPhone 
+                                  : 'Professional service provider',
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey,
                               ),
@@ -205,8 +207,8 @@ class ServiceDetailScreen extends StatelessWidget {
                           final conversationProvider = Provider.of<ConversationProvider>(context, listen: false);
                           conversationProvider.addConversation(
                             service.providerId,
-                            'Service Provider',
-                            'S',
+                            service.providerName,
+                            service.providerName.substring(0, 1).toUpperCase(),
                           );
                           
                           Navigator.push(
@@ -214,8 +216,8 @@ class ServiceDetailScreen extends StatelessWidget {
                             MaterialPageRoute(
                               builder: (context) => ChatScreen(
                                 conversationId: service.providerId,
-                                userName: 'Service Provider',
-                                userAvatar: 'S',
+                                userName: service.providerName,
+                                userAvatar: service.providerName.substring(0, 1).toUpperCase(),
                               ),
                             ),
                           );
