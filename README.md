@@ -23,6 +23,45 @@ A comprehensive Flutter and Node.js application for connecting service providers
 
 ## 🚀 Features
 
+### �‍💼M **NEW: Admin Portal** ⭐
+- **Complete Admin Dashboard**: Manage entire platform from one place
+- **User Management**: View all users, profiles, services, and bookings
+- **Ban System**: Ban users and blacklist credentials (email, phone, CNIC)
+- **Report Management**: Review and resolve user reports
+- **Statistics Dashboard**: Track users, bookings, services, and reports
+- **Multi-Admin Support**: Add additional admin accounts
+- **Primary Admin**: Auto-created with shaheer13113@gmail.com
+
+### � **NaEW: Real Email OTP Verification** ⭐
+- **Gmail SMTP Integration**: Real email delivery
+- **6-Digit OTP**: Secure verification codes
+- **10-Minute Expiry**: Time-limited codes for security
+- **Beautiful Email Templates**: Professional HTML emails
+- **Resend Functionality**: Request new OTP if needed
+- **Welcome Emails**: Automatic welcome after verification
+
+### 💬 **FIXED: WhatsApp-Style Messaging** ⭐
+- **Conversation List**: See all your chats in one place
+- **Last Message Preview**: Quick view of recent messages
+- **Unread Counts**: Badge showing unread messages
+- **Time Ago Format**: "2 hours ago" style timestamps
+- **Real-time Updates**: Messages appear instantly
+- **Pull to Refresh**: Update conversations manually
+
+### 📅 **FIXED: Complete Booking Management** ⭐
+- **Status Tabs**: Pending, Confirmed, In Progress, Completed
+- **Booking History**: View all past and current bookings
+- **Status Updates**: Track booking lifecycle
+- **Cancellation**: Cancel with 3-hour rule
+- **Dual View**: See bookings as customer and provider
+
+### 🚨 **NEW: Report System** ⭐
+- **User Reports**: Report inappropriate behavior, fraud, harassment
+- **Admin Review**: Admins can review and resolve reports
+- **Report Types**: Multiple categories for different issues
+- **Admin Notes**: Add investigation notes
+- **Action Tracking**: See who resolved what and when
+
 ### 📱 **Mobile & Web App (Flutter)**
 - **Service Discovery**: Search and filter services by category and location
 - **Tag-based Areas**: Service providers can add multiple service areas using tag bubbles
@@ -30,7 +69,6 @@ A comprehensive Flutter and Node.js application for connecting service providers
 - **Real-time Messaging**: Chat with service providers including voice notes and file sharing
 - **Profile Management**: Complete user profiles with photo upload capabilities
 - **Settings & Privacy**: Comprehensive settings including notifications, privacy controls
-- **Booking History**: Track all bookings with status updates and cancellation options
 
 ### 🔧 **Backend API (Node.js)**
 - **RESTful API**: Complete API for all app functionality
@@ -38,7 +76,7 @@ A comprehensive Flutter and Node.js application for connecting service providers
 - **Authentication**: Secure user authentication and authorization
 - **Real-time Features**: Socket.io integration for live messaging
 - **File Upload**: Support for profile pictures and attachments
-- **Booking Management**: Complete booking lifecycle management
+- **Admin Routes**: Complete admin API endpoints
 
 ### 🎵 **Advanced Messaging**
 - **Voice Notes**: Long-press to record and send voice messages
@@ -235,3 +273,137 @@ For support and questions:
 ---
 
 **AssureFix** - Connecting trusted service providers with customers seamlessly! 🔧✨
+
+
+---
+
+## 🚀 Quick Start Guide
+
+### For Developers
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/shaheer-dotcom/AssureFix.git
+cd AssureFix
+```
+
+2. **Setup Backend:**
+```bash
+cd backend
+npm install
+# Create .env file (see ADMIN_SETUP_GUIDE.md)
+npm start
+```
+
+3. **Setup Frontend:**
+```bash
+cd frontend
+flutter pub get
+flutter run -d chrome --web-port=8082
+```
+
+4. **Access Admin Portal:**
+- Login with: shaheer13113@gmail.com
+- See ADMIN_SETUP_GUIDE.md for complete instructions
+
+### For Admins
+
+**📖 Complete Admin Guide:** See [ADMIN_SETUP_GUIDE.md](ADMIN_SETUP_GUIDE.md)
+
+**Admin Features:**
+- Dashboard statistics
+- User management
+- Ban/unban users
+- Report management
+- Add new admins
+
+**Admin API Endpoints:**
+```
+POST   /api/admin/login
+GET    /api/admin/dashboard/stats
+GET    /api/admin/users
+GET    /api/admin/users/:id
+POST   /api/admin/users/:id/ban
+GET    /api/admin/reports
+PATCH  /api/admin/reports/:id
+```
+
+### For Users
+
+1. **Register** with your email
+2. **Verify** with OTP sent to your email
+3. **Complete** your profile
+4. **Search** for services or **Post** your own
+5. **Book** services and **Chat** with providers
+6. **Manage** your bookings and **Rate** services
+
+---
+
+## 📚 Documentation
+
+- **[ADMIN_SETUP_GUIDE.md](ADMIN_SETUP_GUIDE.md)** - Complete admin portal setup
+- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
+- **[SETUP.md](SETUP.md)** - Development environment setup
+- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Project overview
+
+---
+
+## 🆕 What's New
+
+### Latest Updates (v2.0)
+
+✨ **Admin Portal**
+- Complete admin dashboard
+- User and service management
+- Ban system with credential blacklisting
+- Report management system
+
+✨ **Real Email Verification**
+- Gmail SMTP integration
+- OTP-based email verification
+- Professional email templates
+
+✨ **Fixed Messaging**
+- WhatsApp-style conversation list
+- Unread message counts
+- Last message preview
+- Time ago timestamps
+
+✨ **Fixed Bookings**
+- Complete booking management
+- Status-based filtering
+- Booking history tracking
+
+✨ **Report System**
+- User reporting functionality
+- Admin review and resolution
+- Multiple report categories
+
+---
+
+## 🔐 Security
+
+- JWT-based authentication
+- Password hashing with bcrypt
+- Email verification required
+- Admin-only routes protected
+- Banned credential checking
+- Input validation and sanitization
+- CORS protection
+
+---
+
+## 🎯 Roadmap
+
+- [ ] Admin web dashboard UI
+- [ ] Push notifications
+- [ ] Payment integration
+- [ ] Advanced analytics
+- [ ] Multi-language support
+- [ ] Mobile app deployment
+- [ ] Service provider verification
+- [ ] In-app chat notifications
+
+---
+
+**AssureFix v2.0** - Complete service booking platform with admin portal, real email verification, and comprehensive management features! 🎉
