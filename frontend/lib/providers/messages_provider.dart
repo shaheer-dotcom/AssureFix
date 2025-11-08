@@ -62,7 +62,7 @@ class Conversation {
     if (json['participants'] is List) {
       for (var participant in json['participants']) {
         if (participant is Map && participant['_id'] != currentUserId) {
-          otherParticipant = participant;
+          otherParticipant = Map<String, dynamic>.from(participant as Map);
           break;
         }
       }
@@ -73,9 +73,9 @@ class Conversation {
       participants: participantsList,
       serviceId: json['serviceId'] is String 
           ? json['serviceId'] 
-          : json['serviceId']?['_id'] ?? '',
+          : (json['serviceId'] != null && json['serviceId'] is Map ? json['serviceId']['_id'] : '') ?? '',
       serviceName: json['serviceId'] is Map 
-          ? json['serviceId']?['serviceName'] ?? 'Service'
+          ? (json['serviceId']['serviceName'] ?? 'Service')
           : 'Service',
       messages: (json['messages'] as List?)
               ?.map((m) => Message.fromJson(m))

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../providers/auth_provider.dart';
 import '../../providers/messages_provider.dart';
@@ -21,11 +22,17 @@ class _EnhancedMessagesScreenState extends State<EnhancedMessagesScreen> {
   }
 
   Future<void> _loadConversations() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final messagesProvider = Provider.of<MessagesProvider>(context, listen: false);
     
-    if (authProvider.token != null) {
-      await messagesProvider.fetchConversations(authProvider.token!);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token != null) {
+        await messagesProvider.fetchConversations(token);
+      }
+    } catch (e) {
+      print('Error loading conversations: $e');
     }
   }
 
@@ -76,7 +83,6 @@ class _EnhancedMessagesScreenState extends State<EnhancedMessagesScreen> {
                               return _buildConversationTile(
                                 conversation,
                                 currentUserId,
-                                authProvider.token!,
                               );
                             },
                           ),
@@ -98,9 +104,10 @@ class _EnhancedMessagesScreenState extends State<EnhancedMessagesScreen> {
     );
   }
 
-  Widget _buildConversationTile(Conversation conversation, String currentUserId, String token) {
+  Widget _buildConversationTile(Conversation conversation, String currentUserId) {
     final otherParticipant = conversation.otherParticipant;
     final participantName = otherParticipant?['profile']?['name'] ?? 'User';
+    final participantAvatar = otherParticipant?['profile']?['profilePicture'] ?? '';
     final unreadCount = conversation.getUnreadCount(currentUserId);
     final lastMessageText = conversation.getLastMessageText();
     final isLastMessageFromMe = conversation.messages.isNotEmpty && 
@@ -109,10 +116,15 @@ class _EnhancedMessagesScreenState extends State<EnhancedMessagesScreen> {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: const Color(0xFF2E7D32),
-        child: Text(
-          participantName[0].toUpperCase(),
-          style: const TextStyle(color: Colors.white),
-        ),
+        backgroundImage: participantAvatar.isNotEmpty 
+            ? NetworkImage(participantAvatar) 
+            : null,
+        child: participantAvatar.isEmpty
+            ? Text(
+                participantName[0].toUpperCase(),
+                style: const TextStyle(color: Colors.white),
+              )
+            : null,
       ),
       title: Row(
         children: [
@@ -184,9 +196,9 @@ class _EnhancedMessagesScreenState extends State<EnhancedMessagesScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => ChatScreen(
-              chatId: conversation.id,
-              otherUserName: participantName,
-              serviceName: conversation.serviceName,
+              conversationId: conversation.id,
+              userName: participantName,
+              userAvatar: participantAvatar,
             ),
           ),
         ).then((_) => _loadConversations());
