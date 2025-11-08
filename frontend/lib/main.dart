@@ -4,6 +4,7 @@ import 'providers/auth_provider.dart';
 import 'providers/service_provider.dart';
 import 'providers/booking_provider.dart';
 import 'providers/conversation_provider.dart';
+import 'providers/messages_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/profile/profile_setup_screen.dart';
@@ -34,6 +35,7 @@ class ServiceHubApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ServiceProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
         ChangeNotifierProvider.value(value: ConversationProvider()),
+        ChangeNotifierProvider(create: (_) => MessagesProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: Consumer<ThemeProvider>(

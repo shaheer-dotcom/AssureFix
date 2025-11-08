@@ -11,6 +11,9 @@ const uploadRoutes = require('./routes/upload');
 const ratingRoutes = require('./routes/ratings');
 const serviceRoutes = require('./routes/services');
 const bookingRoutes = require('./routes/bookings');
+const chatRoutes = require('./routes/chat');
+const reportRoutes = require('./routes/reports');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const server = http.createServer(app);
@@ -45,6 +48,9 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Socket.io for real-time chat
 io.on('connection', (socket) => {

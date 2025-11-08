@@ -30,6 +30,11 @@ const userProfileSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  cnic: {
+    type: String,
+    trim: true,
+    default: null
+  },
   userType: {
     type: String,
     enum: ['customer', 'service_provider'],
@@ -74,6 +79,18 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isBanned: {
+    type: Boolean,
+    default: false
+  },
+  banReason: {
+    type: String,
+    default: null
+  },
+  bannedAt: {
+    type: Date,
+    default: null
   },
   isEmailVerified: {
     type: Boolean,

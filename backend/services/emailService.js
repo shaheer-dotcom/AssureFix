@@ -2,15 +2,13 @@ const nodemailer = require('nodemailer');
 
 class EmailService {
   constructor() {
-    // For development, we'll use a test account
-    // In production, replace with your actual email service
+    // Gmail SMTP configuration
+    // You need to enable "Less secure app access" or use App Password
     this.transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
+      service: 'gmail',
       auth: {
-        user: process.env.EMAIL_USER || 'ethereal.user@ethereal.email',
-        pass: process.env.EMAIL_PASS || 'ethereal.pass'
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
       }
     });
   }
@@ -22,8 +20,7 @@ class EmailService {
 
   // Send OTP email
   async sendOTPEmail(email, otp, name = 'User') {
-    // For development, we'll log the OTP to console
-    // In production, replace this with actual email sending
+    // Log to console for debugging
     console.log('\n=================================');
     console.log('📧 ASSUREFIX - EMAIL VERIFICATION CODE');
     console.log('=================================');
@@ -32,19 +29,14 @@ class EmailService {
     console.log(`Expires: 10 minutes`);
     console.log('=================================\n');
 
-    // Simulate email sending delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // For production, uncomment the actual email sending code below:
-    /*
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"AssureFix" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'AssureFix - Email Verification Code',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2E7D32; margin: 0;">ServiceHub</h1>
+            <h1 style="color: #2E7D32; margin: 0;">AssureFix</h1>
             <p style="color: #666; margin: 5px 0;">Professional Service Marketplace</p>
           </div>
           
@@ -78,15 +70,12 @@ class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`OTP email sent successfully to ${email}`);
+      console.log(`✅ OTP email sent successfully to ${email}`);
       return true;
     } catch (error) {
-      console.error('Error sending OTP email:', error);
+      console.error('❌ Error sending OTP email:', error);
       throw new Error('Failed to send verification email');
     }
-    */
-
-    return true;
   }
 
   // Send welcome email after successful verification

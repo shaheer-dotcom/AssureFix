@@ -8,7 +8,7 @@ class PrivacySettingsScreen extends StatefulWidget {
 }
 
 class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
-  bool _profileVisibility = true;
+  final bool _profileVisibility = true;
   bool _showPhoneNumber = false;
   bool _showEmail = false;
   bool _allowDirectMessages = true;
