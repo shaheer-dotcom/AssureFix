@@ -153,13 +153,17 @@ router.get('/dashboard/stats', adminAuth, async (req, res) => {
 // Get all users with pagination and filters
 router.get('/users', adminAuth, async (req, res) => {
   try {
-    const { 
+    let { 
       page = 1, 
       limit = 20, 
       userType, 
       isBanned, 
       search 
     } = req.query;
+    
+    // Validate and sanitize pagination parameters
+    page = Math.max(1, parseInt(page) || 1);
+    limit = Math.min(100, Math.max(1, parseInt(limit) || 20)); // Max 100 items per page
 
     let query = { isEmailVerified: true };
 
@@ -249,7 +253,11 @@ router.get('/users/:id', adminAuth, async (req, res) => {
 // Get all reports
 router.get('/reports', adminAuth, async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    let { status, page = 1, limit = 20 } = req.query;
+    
+    // Validate and sanitize pagination parameters
+    page = Math.max(1, parseInt(page) || 1);
+    limit = Math.min(100, Math.max(1, parseInt(limit) || 20)); // Max 100 items per page
 
     let query = {};
     if (status) {
@@ -282,6 +290,49 @@ router.get('/reports', adminAuth, async (req, res) => {
 
 // Update report status
 router.patch('/reports/:id', adminAuth, [
+  body('status').isIn(['under_review', 'resolved', 'dismissed']),
+  body('adminNotes').optional().trim()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { status, adminNotes } = req.body;
+
+    const report = await Report.findById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    report.status = status;
+    if (adminNotes) {
+      report.adminNotes = adminNotes;
+    }
+
+    if (status === 'resolved' || status === 'dismissed') {
+      report.resolvedBy = req.admin._id;
+      report.resolvedAt = new Date();
+    }
+
+    await report.save();
+
+    await report.populate([
+      { path: 'reportedBy', select: 'profile.name email' },
+      { path: 'reportedUser', select: 'profile.name email' },
+      { path: 'resolvedBy', select: 'email' }
+    ]);
+
+    res.json(report);
+  } catch (error) {
+    console.error('Update report error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Alternative endpoint for updating report status (for compatibility)
+router.patch('/reports/:id/status', adminAuth, [
   body('status').isIn(['under_review', 'resolved', 'dismissed']),
   body('adminNotes').optional().trim()
 ], async (req, res) => {

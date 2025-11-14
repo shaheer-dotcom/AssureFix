@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../providers/auth_provider.dart';
 import '../../providers/messages_provider.dart';
-import 'chat_screen.dart';
+import 'whatsapp_chat_screen.dart';
 import 'new_message_screen.dart';
 
 class EnhancedMessagesScreen extends StatefulWidget {
@@ -107,6 +107,7 @@ class _EnhancedMessagesScreenState extends State<EnhancedMessagesScreen> {
   Widget _buildConversationTile(Conversation conversation, String currentUserId) {
     final otherParticipant = conversation.otherParticipant;
     final participantName = otherParticipant?['profile']?['name'] ?? 'User';
+    final participantId = otherParticipant?['_id'] ?? '';
     final participantAvatar = otherParticipant?['profile']?['profilePicture'] ?? '';
     final unreadCount = conversation.getUnreadCount(currentUserId);
     final lastMessageText = conversation.getLastMessageText();
@@ -195,10 +196,11 @@ class _EnhancedMessagesScreenState extends State<EnhancedMessagesScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ChatScreen(
+            builder: (context) => WhatsAppChatScreen(
               conversationId: conversation.id,
               userName: participantName,
-              userAvatar: participantAvatar,
+              userAvatar: participantName[0].toUpperCase(),
+              otherUserId: participantId,
             ),
           ),
         ).then((_) => _loadConversations());

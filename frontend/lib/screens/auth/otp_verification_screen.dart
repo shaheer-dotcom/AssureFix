@@ -269,13 +269,18 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     final success = await authProvider.verifyOTP(widget.email, otp, widget.password);
     
     if (success && mounted) {
-      // Success! The AuthWrapper will automatically navigate to the appropriate screen
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Email verified successfully!'),
           backgroundColor: Colors.green,
+          duration: Duration(seconds: 1),
         ),
       );
+      
+      // Navigate back to let AuthWrapper handle the routing
+      // Pop all routes and let AuthWrapper redirect to profile setup
+      Navigator.of(context).popUntil((route) => route.isFirst);
     }
     // Error handling is done by the AuthProvider setting the error state
   }

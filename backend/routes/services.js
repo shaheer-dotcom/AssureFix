@@ -62,7 +62,11 @@ router.post('/', auth, async (req, res) => {
 // Get all services (with search and filters)
 router.get('/', async (req, res) => {
   try {
-    const { search, category, location, page = 1, limit = 20 } = req.query;
+    let { search, category, location, page = 1, limit = 20 } = req.query;
+    
+    // Validate and sanitize pagination parameters
+    page = Math.max(1, parseInt(page) || 1);
+    limit = Math.min(100, Math.max(1, parseInt(limit) || 20)); // Max 100 items per page
 
     // Build query
     const query = { isActive: true };

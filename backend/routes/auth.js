@@ -14,12 +14,15 @@ const generateToken = (userId) => {
 // Send OTP for signup
 router.post('/send-otp', async (req, res) => {
   try {
-    const { email } = req.body;
+    let { email } = req.body;
 
     // Validation
     if (!email) {
       return res.status(400).json({ message: 'Email is required' });
     }
+
+    // Normalize email (lowercase and trim)
+    email = email.toLowerCase().trim();
 
     // Check if user already exists and is verified
     const existingUser = await User.findOne({ email });
@@ -62,19 +65,22 @@ router.post('/send-otp', async (req, res) => {
     });
   } catch (error) {
     console.error('Send OTP error:', error);
-    res.status(500).json({ message: error.message || 'Failed to send verification code' });
+    res.status(500).json({ message: 'Failed to send verification code' });
   }
 });
 
 // Verify OTP and complete signup
 router.post('/verify-otp', async (req, res) => {
   try {
-    const { email, otp, password } = req.body;
+    let { email, otp, password } = req.body;
 
     // Validation
     if (!email || !otp || !password) {
       return res.status(400).json({ message: 'Email, OTP, and password are required' });
     }
+
+    // Normalize email (lowercase and trim)
+    email = email.toLowerCase().trim();
 
     if (password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
@@ -125,11 +131,14 @@ router.post('/verify-otp', async (req, res) => {
 // Resend OTP
 router.post('/resend-otp', async (req, res) => {
   try {
-    const { email } = req.body;
+    let { email } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: 'Email is required' });
     }
+
+    // Normalize email (lowercase and trim)
+    email = email.toLowerCase().trim();
 
     // Find unverified user
     const user = await User.findOne({ 
@@ -166,22 +175,27 @@ router.post('/resend-otp', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
     // Validation
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
+    // Normalize email (lowercase and trim)
+    email = email.toLowerCase().trim();
+
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
+      // Don't reveal if user exists or not (security best practice)
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      // Don't reveal if user exists or not (security best practice)
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 

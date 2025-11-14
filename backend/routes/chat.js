@@ -53,7 +53,17 @@ router.get('/my-chats', auth, async (req, res) => {
     .populate('serviceId', 'serviceName areaCovered')
     .sort({ lastMessage: -1 });
 
-    res.json(chats);
+    // Include messages in the response
+    const chatsWithMessages = chats.map(chat => {
+      const chatObj = chat.toObject();
+      // Ensure messages array exists
+      if (!chatObj.messages) {
+        chatObj.messages = [];
+      }
+      return chatObj;
+    });
+
+    res.json(chatsWithMessages);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

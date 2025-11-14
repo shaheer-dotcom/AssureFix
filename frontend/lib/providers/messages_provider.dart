@@ -62,7 +62,7 @@ class Conversation {
     if (json['participants'] is List) {
       for (var participant in json['participants']) {
         if (participant is Map && participant['_id'] != currentUserId) {
-          otherParticipant = Map<String, dynamic>.from(participant as Map);
+          otherParticipant = Map<String, dynamic>.from(participant);
           break;
         }
       }
@@ -114,6 +114,10 @@ class MessagesProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  String get _baseUrl {
+    return kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000';
+  }
+
   Future<void> fetchConversations(String token) async {
     _isLoading = true;
     _error = null;
@@ -121,7 +125,7 @@ class MessagesProvider with ChangeNotifier {
 
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/chat/my-chats'),
+        Uri.parse('$_baseUrl/api/chat/my-chats'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -159,7 +163,7 @@ class MessagesProvider with ChangeNotifier {
   Future<Conversation?> getConversation(String token, String chatId) async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/chat/$chatId'),
+        Uri.parse('$_baseUrl/api/chat/$chatId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -194,7 +198,7 @@ class MessagesProvider with ChangeNotifier {
   ) async {
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:5000/api/chat/$chatId/messages'),
+        Uri.parse('$_baseUrl/api/chat/$chatId/messages'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -219,7 +223,7 @@ class MessagesProvider with ChangeNotifier {
   Future<bool> markAsRead(String token, String chatId) async {
     try {
       final response = await http.patch(
-        Uri.parse('http://localhost:5000/api/chat/$chatId/read'),
+        Uri.parse('$_baseUrl/api/chat/$chatId/read'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
