@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'users_management_screen.dart';
 import 'reports_management_screen.dart';
+import 'send_notification_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   final String adminToken;
@@ -351,6 +352,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) => ReportsManagementScreen(
+                  adminToken: widget.adminToken,
+                ),
+              ),
+            ),
+      },
+      {
+        'title': 'Send Notifications',
+        'subtitle': 'Send messages to users',
+        'icon': Icons.notifications_active_outlined,
+        'color': Colors.orange,
+        'onTap': () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => SendNotificationScreen(
                   adminToken: widget.adminToken,
                 ),
               ),

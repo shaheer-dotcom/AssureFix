@@ -526,4 +526,97 @@ router.post('/check-banned', async (req, res) => {
   }
 });
 
+// Send notification to specific user
+router.post('/notifications/send', adminAuth, [
+  body('userId').notEmpty().isMongoId(),
+  body('title').notEmpty().trim(),
+  body('message').notEmpty().trim()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { userId, title, message } = req.body;
+
+    // Verify user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Create notification
+    const Notification = require('../models/Notification');
+    const notification = new Notification({
+      userId,
+      type: 'admin',
+      title,
+      message
+    });
+
+    await notification.save();
+
+    res.status(201).json({
+      message: 'Notification sent successfully',
+      notification
+    });
+  } catch (error) {
+    console.error('Send notification error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Broadcast notification to multiple users
+router.post('/notifications/broadcast', adminAuth, [
+  body('title').notEmpty().trim(),
+  body('message').notEmpty().trim(),
+  body('targetAudience').isIn(['all', 'customers', 'providers'])
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { title, message, targetAudience } = req.body;
+
+    // Build query based on target audience
+    let query = { isEmailVerified: true, isBanned: false };
+    
+    if (targetAudience === 'customers') {
+      query['profile.userType'] = 'customer';
+    } else if (targetAudience === 'providers') {
+      query['profile.userType'] = 'service_provider';
+    }
+
+    // Get all target users
+    const users = await User.find(query).select('_id');
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'No users found for the target audience' });
+    }
+
+    // Create notifications for all users
+    const Notification = require('../models/Notification');
+    const notifications = users.map(user => ({
+      userId: user._id,
+      type: 'admin',
+      title,
+      message
+    }));
+
+    await Notification.insertMany(notifications);
+
+    res.status(201).json({
+      message: 'Broadcast notification sent successfully',
+      recipientCount: users.length,
+      targetAudience
+    });
+  } catch (error) {
+    console.error('Broadcast notification error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

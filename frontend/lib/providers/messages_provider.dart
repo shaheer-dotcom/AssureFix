@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../config/api_config.dart';
 
 class Message {
   final String id;
@@ -115,7 +116,7 @@ class MessagesProvider with ChangeNotifier {
   String? get error => _error;
 
   String get _baseUrl {
-    return kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000';
+    return ApiConfig.baseUrlWithoutApi;
   }
 
   Future<void> fetchConversations(String token) async {

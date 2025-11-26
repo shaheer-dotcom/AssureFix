@@ -8,6 +8,7 @@ import '../../models/service.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/conversation_provider.dart';
+import '../../config/api_config.dart';
 import '../messages/chat_screen.dart';
 
 class BookingFormScreen extends StatefulWidget {
@@ -520,7 +521,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:5000/api/chat/create'),
+        Uri.parse('${ApiConfig.baseUrlWithoutApi}/api/chat/create'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

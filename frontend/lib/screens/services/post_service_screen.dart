@@ -329,8 +329,6 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
       return;
     }
 
-    final allAreas = _areas.join('\n');
-    
     // Validate price
     final priceText = _priceController.text.trim();
     if (priceText.isEmpty) {
@@ -359,8 +357,7 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
       'serviceName': _nameController.text.trim(),
       'description': _descriptionController.text.trim(),
       'category': _selectedCategory,
-      'area': allAreas,
-      'areaCovered': allAreas,
+      'areaTags': _areas, // Send as array
       'price': price,
       'pricePerHour': price,
       'priceType': _selectedPriceType,

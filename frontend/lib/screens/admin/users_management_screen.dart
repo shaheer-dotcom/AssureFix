@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../widgets/confirmation_dialog.dart';
 import 'user_detail_admin_screen.dart';
 
 class UsersManagementScreen extends StatefulWidget {
@@ -68,7 +69,12 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   }
 
   Future<void> _banUser(String userId, String userName) async {
-    final reason = await _showBanDialog(userName);
+    // First, show confirmation dialog
+    final confirmed = await _showBanConfirmationDialog(userName);
+    if (confirmed != true) return;
+
+    // Then, ask for ban reason
+    final reason = await _showBanReasonDialog(userName);
     if (reason == null) return;
 
     try {
@@ -82,25 +88,33 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('User $userName has been banned'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('User $userName has been banned'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         _loadUsers();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error banning user: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error banning user: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _unbanUser(String userId, String userName) async {
+    // Show confirmation dialog before unbanning
+    final confirmed = await _showUnbanConfirmationDialog(userName);
+    if (confirmed != true) return;
+
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/api/admin/users/$userId/unban'),
@@ -111,42 +125,71 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('User $userName has been unbanned'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('User $userName has been unbanned'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
         _loadUsers();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error unbanning user: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error unbanning user: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  Future<String?> _showBanDialog(String userName) async {
+  Future<bool?> _showBanConfirmationDialog(String userName) async {
+    return ConfirmationDialog.banUser(context, userName);
+  }
+
+  Future<bool?> _showUnbanConfirmationDialog(String userName) async {
+    return ConfirmationDialog.unbanUser(context, userName);
+  }
+
+  Future<String?> _showBanReasonDialog(String userName) async {
     final reasonController = TextEditingController();
     return showDialog<String>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: Text('Ban User: $userName'),
+        title: Text('Ban Reason for $userName'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Please provide a reason for banning this user:'),
+            const Text(
+              'Please provide a detailed reason for banning this user:',
+              style: TextStyle(fontSize: 14),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
               decoration: const InputDecoration(
                 labelText: 'Ban Reason',
+                hintText: 'e.g., Violation of terms of service, fraudulent activity...',
                 border: OutlineInputBorder(),
               ),
-              maxLines: 3,
+              maxLines: 4,
+              maxLength: 500,
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This reason will be visible to the user.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ),
@@ -159,10 +202,20 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
             onPressed: () {
               if (reasonController.text.trim().isNotEmpty) {
                 Navigator.pop(context, reasonController.text.trim());
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please provide a ban reason'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Ban User'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Submit & Ban User'),
           ),
         ],
       ),

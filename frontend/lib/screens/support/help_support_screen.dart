@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key});
@@ -248,21 +250,87 @@ class HelpSupportScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                final isProvider = authProvider.user?.profile?.userType == 'service_provider';
+                
+                if (isProvider) {
+                  return Column(
+                    children: [
+                      _buildFAQItem(
+                        'How do I post a service?',
+                        'Go to your home screen, tap "Post a service", fill in the service details including name, description, price, and area tags, then submit.',
+                      ),
+                      _buildFAQItem(
+                        'How do I manage my bookings?',
+                        'Tap "Manage Bookings" from your home screen to view all active, completed, and cancelled bookings.',
+                      ),
+                      _buildFAQItem(
+                        'How do I complete a booking?',
+                        'Once the service is done, tap "Mark as Completed" on the booking card, then rate the customer.',
+                      ),
+                      _buildFAQItem(
+                        'How do I edit my services?',
+                        'Go to "Manage Services" from your home screen, find the service you want to edit, and tap the edit icon.',
+                      ),
+                      _buildFAQItem(
+                        'How do customers find my services?',
+                        'Customers can search for services by name and area tags. Make sure to add relevant area tags to your services.',
+                      ),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    children: [
+                      _buildFAQItem(
+                        'How do I book a service?',
+                        'Search for services using the search screen, select a service provider, review the details, and tap "Book This Service".',
+                      ),
+                      _buildFAQItem(
+                        'How do I search for services?',
+                        'Use the "Search A service" option from your home screen. Add service name tags and area tags to find relevant services.',
+                      ),
+                      _buildFAQItem(
+                        'How do I cancel a booking?',
+                        'Go to "Manage Bookings", find your booking in the Active tab, and tap "Cancel". Confirm the cancellation.',
+                      ),
+                      _buildFAQItem(
+                        'How do I rate a service provider?',
+                        'After the service is completed, tap "Completed" on the booking card, then rate the provider with stars and an optional review.',
+                      ),
+                      _buildFAQItem(
+                        'How do I contact a service provider?',
+                        'On the service detail screen, tap the "Message" button to start a conversation with the provider.',
+                      ),
+                    ],
+                  );
+                }
+              },
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Common FAQs
+            const Text(
+              'General Questions',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            
             _buildFAQItem(
-              'How do I book a service?',
-              'You can browse services on the home screen, select a service provider, and book directly through the app.',
+              'How do I change my password?',
+              'Go to Settings > Change Password. Enter your new password and verify it with the OTP sent to your email.',
             ),
             _buildFAQItem(
-              'How do I become a service provider?',
-              'Sign up as a service provider during registration, complete your profile, and start posting your services.',
+              'How do I report a user?',
+              'Tap "Report and block" from your home screen, select the user, and provide details about the issue.',
             ),
             _buildFAQItem(
-              'How do I cancel a booking?',
-              'Go to your booking history, find the booking, and tap cancel. Note that cancellation policies may apply.',
-            ),
-            _buildFAQItem(
-              'How do I rate a service?',
-              'After service completion, you\'ll receive a notification to rate and review the service provider.',
+              'Is my data secure?',
+              'Yes, we use industry-standard encryption and security measures to protect your data. Read our Privacy Policy for more details.',
             ),
           ],
         ),

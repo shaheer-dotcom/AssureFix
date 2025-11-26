@@ -1,7 +1,11 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import '../../config/api_config.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -14,8 +18,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _imagePicker = ImagePicker();
   String _selectedUserType = 'customer';
   bool _isLoading = false;
+  bool _isUploadingProfilePicture = false;
+  bool _isUploadingBanner = false;
+  XFile? _profilePictureFile;
+  XFile? _bannerImageFile;
+  String? _currentProfilePicture;
+  String? _currentBannerImage;
 
   @override
   void initState() {
@@ -31,6 +42,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _nameController.text = user!.profile!.name;
       _phoneController.text = user.profile!.phoneNumber;
       _selectedUserType = user.profile!.userType;
+      _currentProfilePicture = user.profile!.profilePicture;
+      _currentBannerImage = user.profile!.bannerImage;
     }
   }
 
@@ -76,30 +89,80 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Center(
                 child: Column(
                   children: [
-                    Consumer<AuthProvider>(
-                      builder: (context, authProvider, child) {
-                        final user = authProvider.user;
-                        return CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Theme.of(context).primaryColor,
-                          child: Text(
-                            (user?.profile?.name.isNotEmpty == true)
-                                ? user!.profile!.name
-                                    .substring(0, 1)
-                                    .toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                    Stack(
+                      children: [
+                        Consumer<AuthProvider>(
+                          builder: (context, authProvider, child) {
+                            final user = authProvider.user;
+                            
+                            // Show selected file or current profile picture
+                            if (_profilePictureFile != null) {
+                              return FutureBuilder<Uint8List>(
+                                future: _profilePictureFile!.readAsBytes(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasData) {
+                                    return CircleAvatar(
+                                      radius: 50,
+                                      backgroundImage: MemoryImage(snapshot.data!),
+                                    );
+                                  }
+                                  return CircleAvatar(
+                                    radius: 50,
+                                    backgroundColor: Theme.of(context).primaryColor,
+                                    child: const CircularProgressIndicator(color: Colors.white),
+                                  );
+                                },
+                              );
+                            } else if (_currentProfilePicture != null) {
+                              return CircleAvatar(
+                                radius: 50,
+                                backgroundImage: NetworkImage(
+                                  '${ApiConfig.baseUrlWithoutApi}$_currentProfilePicture',
+                                ),
+                                backgroundColor: Theme.of(context).primaryColor,
+                                onBackgroundImageError: (exception, stackTrace) {
+                                  print('Error loading profile picture: $exception');
+                                },
+                              );
+                            } else {
+                              return CircleAvatar(
+                                radius: 50,
+                                backgroundColor: Theme.of(context).primaryColor,
+                                child: Text(
+                                  (user?.profile?.name.isNotEmpty == true)
+                                      ? user!.profile!.name
+                                          .substring(0, 1)
+                                          .toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        if (_isUploadingProfilePicture)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
                           ),
-                        );
-                      },
+                      ],
                     ),
                     const SizedBox(height: 8),
                     TextButton.icon(
-                      onPressed: _showImagePickerDialog,
+                      onPressed: _isUploadingProfilePicture ? null : () => _showImagePickerDialog('profile'),
                       icon: const Icon(Icons.camera_alt),
                       label: const Text('Change Photo'),
                     ),
@@ -108,6 +171,116 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
 
               const SizedBox(height: 32),
+
+              // Banner Image Section (Service Provider only)
+              if (_selectedUserType == 'service_provider') ...[
+                const Text(
+                  'Banner Image',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Stack(
+                  children: [
+                    Container(
+                      height: 150,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: _bannerImageFile != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: FutureBuilder<Uint8List>(
+                                future: _bannerImageFile!.readAsBytes(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasData) {
+                                    return Image.memory(
+                                      snapshot.data!,
+                                      fit: BoxFit.cover,
+                                    );
+                                  }
+                                  return const Center(child: CircularProgressIndicator());
+                                },
+                              ),
+                            )
+                          : _currentBannerImage != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    '${ApiConfig.baseUrlWithoutApi}$_currentBannerImage',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      print('Error loading banner: $error');
+                                      return Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.image, size: 50, color: Colors.grey.shade400),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'No banner image',
+                                              style: TextStyle(color: Colors.grey.shade600),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                )
+                              : Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.image, size: 50, color: Colors.grey.shade400),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'No banner image',
+                                        style: TextStyle(color: Colors.grey.shade600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                    ),
+                    if (_isUploadingBanner)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: _isUploadingBanner ? null : () => _showImagePickerDialog('banner'),
+                      icon: const Icon(Icons.add_photo_alternate),
+                      label: const Text('Change Banner'),
+                    ),
+                    if (_currentBannerImage != null || _bannerImageFile != null)
+                      TextButton.icon(
+                        onPressed: _isUploadingBanner ? null : _removeBannerImage,
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        label: const Text('Remove', style: TextStyle(color: Colors.red)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
 
               // Basic Information
               const Text(
@@ -160,7 +333,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // User Type Section
+              // User Type Section (Read-only)
               const Text(
                 'Account Type',
                 style: TextStyle(
@@ -170,38 +343,71 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // User Type Selection
+              // User Type Display (Read-only)
               Container(
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
                   border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Column(
+                child: Row(
                   children: [
-                    RadioListTile<String>(
-                      title: const Text('Customer'),
-                      subtitle: const Text('I want to book services'),
-                      value: 'customer',
-                      groupValue: _selectedUserType,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedUserType = value!;
-                        });
-                      },
+                    Icon(
+                      _selectedUserType == 'customer' ? Icons.person : Icons.work,
+                      color: Theme.of(context).primaryColor,
+                      size: 32,
                     ),
-                    const Divider(height: 1),
-                    RadioListTile<String>(
-                      title: const Text('Service Provider'),
-                      subtitle: const Text('I want to offer services'),
-                      value: 'service_provider',
-                      groupValue: _selectedUserType,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedUserType = value!;
-                        });
-                      },
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedUserType == 'customer' ? 'Customer' : 'Service Provider',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _selectedUserType == 'customer' 
+                                ? 'I want to book services' 
+                                : 'I want to offer services',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Fixed',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Note: Account type cannot be changed. Create a new account to use a different role.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
 
@@ -287,9 +493,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'name': _nameController.text.trim(),
         'phoneNumber': _phoneController.text.trim(),
         'userType': _selectedUserType,
+        if (_currentProfilePicture != null) 'profilePicture': _currentProfilePicture,
+        if (_currentBannerImage != null && _selectedUserType == 'service_provider') 
+          'bannerImage': _currentBannerImage,
       };
 
-      final success = await authProvider.createProfile(profileData);
+      final success = await authProvider.updateProfile(profileData);
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -325,7 +534,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  void _showImagePickerDialog() {
+  void _showImagePickerDialog(String imageType) {
+    final isProfile = imageType == 'profile';
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -333,9 +543,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Change Profile Picture',
-              style: TextStyle(
+            Text(
+              isProfile ? 'Change Profile Picture' : 'Change Banner Image',
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -349,7 +559,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   'Camera',
                   () {
                     Navigator.pop(context);
-                    _pickImageFromCamera();
+                    _pickImageFromCamera(imageType);
                   },
                 ),
                 _buildImageOption(
@@ -357,17 +567,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   'Gallery',
                   () {
                     Navigator.pop(context);
-                    _pickImageFromGallery();
+                    _pickImageFromGallery(imageType);
                   },
                 ),
-                _buildImageOption(
-                  Icons.delete,
-                  'Remove',
-                  () {
-                    Navigator.pop(context);
-                    _removeProfilePicture();
-                  },
-                ),
+                if (isProfile && (_currentProfilePicture != null || _profilePictureFile != null))
+                  _buildImageOption(
+                    Icons.delete,
+                    'Remove',
+                    () {
+                      Navigator.pop(context);
+                      _removeProfilePicture();
+                    },
+                  ),
               ],
             ),
           ],
@@ -393,30 +604,157 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  void _pickImageFromCamera() {
-    // Simulate camera functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Photo captured from camera'),
-        backgroundColor: Colors.green,
-      ),
-    );
+  Future<void> _pickImageFromCamera(String imageType) async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: imageType == 'profile' ? 800 : 1200,
+        maxHeight: imageType == 'profile' ? 800 : 600,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        await _uploadImage(image, imageType);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to capture image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  void _pickImageFromGallery() {
-    // Simulate gallery functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Photo selected from gallery'),
-        backgroundColor: Colors.green,
-      ),
-    );
+  Future<void> _pickImageFromGallery(String imageType) async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: imageType == 'profile' ? 800 : 1200,
+        maxHeight: imageType == 'profile' ? 800 : 600,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        await _uploadImage(image, imageType);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to select image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadImage(XFile imageFile, String imageType) async {
+    final isProfile = imageType == 'profile';
+    
+    setState(() {
+      if (isProfile) {
+        _isUploadingProfilePicture = true;
+      } else {
+        _isUploadingBanner = true;
+      }
+    });
+
+    try {
+      String filePath;
+      if (isProfile) {
+        filePath = await ApiService.uploadProfilePicture(imageFile);
+      } else {
+        filePath = await ApiService.uploadBanner(imageFile);
+      }
+
+      setState(() {
+        if (isProfile) {
+          _profilePictureFile = imageFile;
+          _currentProfilePicture = filePath;
+        } else {
+          _bannerImageFile = imageFile;
+          _currentBannerImage = filePath;
+        }
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${isProfile ? "Profile picture" : "Banner"} uploaded successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      // Update profile immediately with the new image path
+      await _updateProfileWithImages();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          if (isProfile) {
+            _isUploadingProfilePicture = false;
+          } else {
+            _isUploadingBanner = false;
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _updateProfileWithImages() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      final profileData = {
+        'name': _nameController.text.trim(),
+        'phoneNumber': _phoneController.text.trim(),
+        'userType': _selectedUserType,
+        if (_currentProfilePicture != null) 'profilePicture': _currentProfilePicture,
+        if (_currentBannerImage != null) 'bannerImage': _currentBannerImage,
+      };
+
+      await authProvider.updateProfile(profileData);
+    } catch (e) {
+      // Silent fail - will be saved when user clicks Save button
+    }
   }
 
   void _removeProfilePicture() {
+    setState(() {
+      _profilePictureFile = null;
+      _currentProfilePicture = null;
+    });
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Profile picture removed'),
+        content: Text('Profile picture will be removed when you save'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
+  void _removeBannerImage() {
+    setState(() {
+      _bannerImageFile = null;
+      _currentBannerImage = null;
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Banner image will be removed when you save'),
         backgroundColor: Colors.orange,
       ),
     );

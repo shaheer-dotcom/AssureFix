@@ -29,8 +29,11 @@ const ratingRoutes = require('./routes/ratings');
 const serviceRoutes = require('./routes/services');
 const bookingRoutes = require('./routes/bookings');
 const chatRoutes = require('./routes/chat');
+const messageRoutes = require('./routes/messages');
 const reportRoutes = require('./routes/reports');
 const adminRoutes = require('./routes/admin');
+const notificationRoutes = require('./routes/notifications');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 const server = http.createServer(app);
@@ -40,7 +43,13 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : (process.env.NODE_ENV === 'production' 
       ? [] 
-      : ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:3000']);
+      : [
+          'http://localhost:8080', 
+          'http://127.0.0.1:8080', 
+          'http://localhost:3000',
+          'http://192.168.100.7:8080',  // Local network access for mobile testing
+          'http://192.168.100.7:3000'
+        ]);
 
 const io = socketIo(server, {
   cors: {
@@ -48,9 +57,12 @@ const io = socketIo(server, {
       // Allow requests with no origin (like mobile apps)
       if (!origin) return callback(null, true);
       
-      // In development, allow localhost
+      // In development, allow localhost and local network IPs
       if (process.env.NODE_ENV !== 'production') {
-        if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        if (origin.startsWith('http://localhost:') || 
+            origin.startsWith('http://127.0.0.1:') ||
+            origin.startsWith('http://192.168.') ||
+            origin.startsWith('http://10.0.')) {
           return callback(null, true);
         }
       }
@@ -101,9 +113,12 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // In development, allow localhost
+    // In development, allow localhost and local network IPs
     if (process.env.NODE_ENV !== 'production') {
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+      if (origin.startsWith('http://localhost:') || 
+          origin.startsWith('http://127.0.0.1:') ||
+          origin.startsWith('http://192.168.') ||
+          origin.startsWith('http://10.0.')) {
         return callback(null, true);
       }
     }
@@ -143,8 +158,11 @@ app.use('/api/ratings', ratingRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/messages', messageRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -226,9 +244,14 @@ connectDB();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-server.listen(PORT, () => {
+// Bind to 0.0.0.0 to accept connections from all network interfaces
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT} in ${NODE_ENV} mode`);
+  console.log(`📱 Local access: http://localhost:${PORT}`);
+  console.log(`📱 Network access: http://192.168.100.7:${PORT}`);
+  console.log(`📱 Mobile API endpoint: http://192.168.100.7:${PORT}/api`);
   if (NODE_ENV === 'production') {
     console.log('✅ Production mode enabled');
   }
+  console.log('\n⚠️  Make sure Windows Firewall allows connections on port', PORT);
 });

@@ -6,8 +6,9 @@ import 'providers/booking_provider.dart';
 import 'providers/conversation_provider.dart';
 import 'providers/messages_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/notification_provider.dart';
 import 'screens/auth/login_screen.dart';
-import 'screens/profile/profile_setup_screen.dart';
+import 'screens/auth/role_selection_screen.dart';
 import 'screens/main_navigation.dart';
 import 'screens/splash/animated_loading_screen.dart';
 import 'screens/services/create_service_screen.dart';
@@ -19,8 +20,17 @@ import 'screens/bookings/manage_bookings_screen.dart';
 import 'screens/bookings/booking_history_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/support/help_support_screen.dart';
+import 'screens/notifications/notifications_screen.dart';
+import 'screens/profile/report_block_management_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Add error handling for uncaught errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+  };
+  
   runApp(const ServiceHubApp());
 }
 
@@ -37,6 +47,7 @@ class ServiceHubApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: ConversationProvider()),
         ChangeNotifierProvider(create: (_) => MessagesProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -55,6 +66,8 @@ class ServiceHubApp extends StatelessWidget {
               '/booking-history': (context) => const BookingHistoryScreen(),
               '/settings': (context) => const SettingsScreen(),
               '/help-support': (context) => const HelpSupportScreen(),
+              '/report-block': (context) => const ReportBlockManagementScreen(),
+              '/notifications': (context) => const NotificationsScreen(),
             },
           );
         },
@@ -99,7 +112,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
 
         if (!authProvider.hasProfile) {
-          return const ProfileSetupScreen();
+          return const RoleSelectionScreen();
         }
 
         return const MainNavigation();

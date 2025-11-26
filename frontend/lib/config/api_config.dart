@@ -1,4 +1,10 @@
 class ApiConfig {
+  // Your computer's local network IP address
+  // Detected IP: 192.168.100.7 (Wi-Fi adapter)
+  // IMPORTANT: Mobile devices must be on the same Wi-Fi network (192.168.100.x)
+  static const String _localNetworkIp = '192.168.100.7';
+  static const String _port = '5000';
+
   // Get base URL from environment or use default
   // In production, set this via build configuration or environment variables
   static String get baseUrl {
@@ -7,21 +13,24 @@ class ApiConfig {
     if (envUrl.isNotEmpty) {
       return envUrl;
     }
-    
-    // Default to localhost for development
-    // In production, this should be overridden
-    return 'http://localhost:5000/api';
+
+    // Use local network IP for mobile testing
+    // Make sure:
+    // 1. Your mobile is connected to the same Wi-Fi network
+    // 2. Backend server is running on this computer
+    // 3. Windows Firewall allows connections on port 5000
+    return 'http://$_localNetworkIp:$_port/api';
   }
-  
+
   // Get full API URL
   static String get apiUrl => baseUrl;
-  
+
+  // Get base URL without /api suffix (for file uploads and direct endpoints)
+  static String get baseUrlWithoutApi => 'http://$_localNetworkIp:$_port';
+
   // Check if running in production mode
   static bool get isProduction {
     const bool isProd = bool.fromEnvironment('dart.vm.product');
     return isProd;
   }
 }
-
-
-

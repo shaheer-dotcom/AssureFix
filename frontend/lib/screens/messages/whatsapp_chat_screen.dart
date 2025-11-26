@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../config/api_config.dart';
+import '../../services/api_service.dart';
 import '../profile/user_profile_view_screen.dart';
 
 class WhatsAppChatScreen extends StatefulWidget {
@@ -27,13 +32,16 @@ class WhatsAppChatScreen extends StatefulWidget {
 class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
   List<Map<String, dynamic>> _messages = [];
   bool _isLoading = true;
   bool _isRecording = false;
+  bool _isSendingImage = false;
+  bool _isSendingLocation = false;
   String? _currentUserId;
 
   String get _baseUrl {
-    return kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000';
+    return ApiConfig.baseUrlWithoutApi;
   }
 
   @override
@@ -72,6 +80,9 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
             _isLoading = false;
           });
           _scrollToBottom();
+          
+          // Mark messages as read
+          _markAsRead(token);
         }
       }
     } catch (e) {
@@ -79,6 +90,20 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _markAsRead(String token) async {
+    try {
+      await http.patch(
+        Uri.parse('$_baseUrl/api/chat/${widget.conversationId}/read'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+    } catch (e) {
+      print('Error marking as read: $e');
     }
   }
 
@@ -195,21 +220,22 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.call),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Voice call feature coming soon!'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {},
-          ),
+          if (widget.otherUserId != null)
+            IconButton(
+              icon: const Icon(Icons.person),
+              tooltip: 'View Profile',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => UserProfileViewScreen(
+                      userId: widget.otherUserId!,
+                      userName: widget.userName,
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
       body: Column(
@@ -310,7 +336,108 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
                 ),
               ),
             // Message content based on type
-            if (messageType == 'voice')
+            if (messageType == 'image')
+              GestureDetector(
+                onTap: () {
+                  // Show full image
+                  final imageUrl = message['content']?['imageUrl'];
+                  if (imageUrl != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Scaffold(
+                          appBar: AppBar(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                          ),
+                          backgroundColor: Colors.black,
+                          body: Center(
+                            child: InteractiveViewer(
+                              child: Image.network(
+                                '${ApiConfig.baseUrlWithoutApi}$imageUrl',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    '${ApiConfig.baseUrlWithoutApi}${message['content']?['imageUrl']}',
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 200,
+                        height: 200,
+                        color: Colors.grey.shade300,
+                        child: const Icon(Icons.broken_image, size: 50),
+                      );
+                    },
+                  ),
+                ),
+              )
+            else if (messageType == 'location')
+              GestureDetector(
+                onTap: () {
+                  final lat = message['content']?['latitude'];
+                  final lng = message['content']?['longitude'];
+                  if (lat != null && lng != null) {
+                    final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.location_on, size: 20, color: Colors.red.shade700),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Location',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        message['content']?['address'] ?? 'View on map',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Tap to open in maps',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.blue,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (messageType == 'voice')
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -318,22 +445,6 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
                   const SizedBox(width: 8),
                   const Text(
                     'Voice message',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.black87,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              )
-            else if (messageType == 'location')
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.location_on, size: 20, color: Colors.grey.shade700),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Location',
                     style: TextStyle(
                       fontSize: 15,
                       color: Colors.black87,
@@ -379,30 +490,190 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
     );
   }
 
+  Future<void> _pickAndSendImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() => _isSendingImage = true);
+        
+        // Upload image
+        final imagePath = await ApiService.uploadProfilePicture(image);
+        
+        // Send message with image
+        await _sendMessageWithContent('image', {'imageUrl': imagePath});
+        
+        setState(() => _isSendingImage = false);
+      }
+    } catch (e) {
+      setState(() => _isSendingImage = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send image: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _takeAndSendPhoto() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() => _isSendingImage = true);
+        
+        // Upload image
+        final imagePath = await ApiService.uploadProfilePicture(image);
+        
+        // Send message with image
+        await _sendMessageWithContent('image', {'imageUrl': imagePath});
+        
+        setState(() => _isSendingImage = false);
+      }
+    } catch (e) {
+      setState(() => _isSendingImage = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send photo: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendLocation() async {
+    try {
+      setState(() => _isSendingLocation = true);
+      
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permission denied');
+        }
+      }
+
+      // Get current location
+      final position = await Geolocator.getCurrentPosition();
+      
+      // Get address from coordinates
+      String address = 'Location';
+      try {
+        final placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          address = '${place.street}, ${place.locality}, ${place.country}';
+        }
+      } catch (e) {
+        address = 'Lat: ${position.latitude.toStringAsFixed(6)}, Lng: ${position.longitude.toStringAsFixed(6)}';
+      }
+
+      // Send message with location
+      await _sendMessageWithContent('location', {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'address': address,
+      });
+      
+      setState(() => _isSendingLocation = false);
+    } catch (e) {
+      setState(() => _isSendingLocation = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send location: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendMessageWithContent(String messageType, Map<String, dynamic> content) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token != null) {
+        final response = await http.post(
+          Uri.parse('$_baseUrl/api/chat/${widget.conversationId}/messages'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: json.encode({
+            'messageType': messageType,
+            'content': content,
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          await _loadMessages();
+        }
+      }
+    } catch (e) {
+      print('Error sending message: $e');
+    }
+  }
+
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Color(0xFF1565C0)),
+              title: const Text('Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndSendImage();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Color(0xFF1565C0)),
+              title: const Text('Camera'),
+              onTap: () {
+                Navigator.pop(context);
+                _takeAndSendPhoto();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.location_on, color: Color(0xFF1565C0)),
+              title: const Text('Location'),
+              onTap: () {
+                Navigator.pop(context);
+                _sendLocation();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _startRecording() async {
     setState(() {
       _isRecording = true;
     });
-    // TODO: Implement actual voice recording
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Recording started... (Feature in development)'),
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   Future<void> _stopRecording() async {
     setState(() {
       _isRecording = false;
     });
-    // TODO: Implement actual voice recording stop and send
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Voice note sent! (Feature in development)'),
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   Widget _buildMessageInput() {
@@ -432,9 +703,8 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.emoji_emotions_outlined,
-                        color: Colors.grey.shade600),
-                    onPressed: () {},
+                    icon: Icon(Icons.attach_file, color: Colors.grey.shade600),
+                    onPressed: _showAttachmentOptions,
                   ),
                   Expanded(
                     child: TextField(
@@ -442,7 +712,7 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Message',
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 10),
+                        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                       ),
                       maxLines: null,
                       textCapitalization: TextCapitalization.sentences,
@@ -451,39 +721,29 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
                       },
                     ),
                   ),
-                  if (!hasText) ...[
-                    IconButton(
-                      icon: Icon(Icons.attach_file, color: Colors.grey.shade600),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Attachment feature coming soon!'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.camera_alt, color: Colors.grey.shade600),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Camera feature coming soon!'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
                 ],
               ),
             ),
           ),
           const SizedBox(width: 8),
-          CircleAvatar(
-            backgroundColor: const Color(0xFF1565C0), // App blue color
-            radius: 24,
-            child: _isRecording
+          if (_isSendingImage || _isSendingLocation)
+            const CircleAvatar(
+              backgroundColor: Color(0xFF1565C0),
+              radius: 24,
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else
+            CircleAvatar(
+              backgroundColor: const Color(0xFF1565C0), // App blue color
+              radius: 24,
+              child: _isRecording
                 ? IconButton(
                     icon: const Icon(Icons.stop, color: Colors.white, size: 20),
                     onPressed: _stopRecording,
@@ -493,20 +753,16 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
                         icon: const Icon(Icons.send, color: Colors.white, size: 20),
                         onPressed: _sendMessage,
                       )
-                    : GestureDetector(
-                        onLongPressStart: (_) => _startRecording(),
-                        onLongPressEnd: (_) => _stopRecording(),
-                        child: IconButton(
-                          icon: const Icon(Icons.mic, color: Colors.white, size: 20),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Hold to record voice note'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                        ),
+                    : IconButton(
+                        icon: const Icon(Icons.mic, color: Colors.white, size: 20),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Type a message to send'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
                       ),
           ),
         ],

@@ -67,7 +67,19 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 style: const TextStyle(color: Colors.white),
                 onChanged: _filterConversations,
               )
-            : const Text('Messages'),
+            : const Text(
+                'Messages',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -158,18 +170,31 @@ class _MessagesScreenState extends State<MessagesScreen> {
           fontWeight: FontWeight.bold,
         ),
       ),
-      subtitle: Text(
-        conversation['lastMessage'],
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: conversation['unreadCount'] > 0 
-              ? Colors.black87 
-              : Colors.grey.shade600,
-          fontWeight: conversation['unreadCount'] > 0 
-              ? FontWeight.w500 
-              : FontWeight.normal,
-        ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (conversation['role'] != null)
+            Text(
+              conversation['role'],
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          Text(
+            conversation['lastMessage'],
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: conversation['unreadCount'] > 0 
+                  ? Colors.black87 
+                  : Colors.grey.shade600,
+              fontWeight: conversation['unreadCount'] > 0 
+                  ? FontWeight.w500 
+                  : FontWeight.normal,
+            ),
+          ),
+        ],
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,

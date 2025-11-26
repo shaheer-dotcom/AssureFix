@@ -15,13 +15,12 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
-  List<Widget> _getScreens(bool isProvider) {
-    return [
-      const UnifiedDashboard(),
-      const EnhancedMessagesScreen(),
-      const ProfileScreen(),
-    ];
-  }
+  // Screens are the same for both roles
+  final List<Widget> _screens = const [
+    UnifiedDashboard(),
+    EnhancedMessagesScreen(),
+    ProfileScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -29,10 +28,12 @@ class _MainNavigationState extends State<MainNavigation> {
       builder: (context, authProvider, child) {
         final user = authProvider.user;
         final isProvider = user?.profile?.userType == 'service_provider';
-        final screens = _getScreens(isProvider);
 
         return Scaffold(
-          body: screens[_currentIndex],
+          body: IndexedStack(
+            index: _currentIndex,
+            children: _screens,
+          ),
           bottomNavigationBar: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             currentIndex: _currentIndex,
@@ -42,7 +43,7 @@ class _MainNavigationState extends State<MainNavigation> {
               });
             },
             selectedItemColor: const Color(0xFF1565C0),
-            unselectedItemColor: Colors.grey,
+            unselectedItemColor: Colors.grey.shade600,
             backgroundColor: Colors.white,
             elevation: 8,
             selectedLabelStyle: const TextStyle(
@@ -55,19 +56,22 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
             items: [
               BottomNavigationBarItem(
-                icon: const Icon(Icons.dashboard_outlined),
-                activeIcon: const Icon(Icons.dashboard),
-                label: isProvider ? 'Provider' : 'Dashboard',
+                icon: const Icon(Icons.home_outlined),
+                activeIcon: const Icon(Icons.home),
+                label: 'Home',
+                tooltip: isProvider ? 'Service Provider Home' : 'Customer Home',
               ),
               const BottomNavigationBarItem(
                 icon: Icon(Icons.message_outlined),
                 activeIcon: Icon(Icons.message),
                 label: 'Messages',
+                tooltip: 'Messages',
               ),
               const BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),
                 activeIcon: Icon(Icons.person),
                 label: 'Profile',
+                tooltip: 'Profile',
               ),
             ],
           ),

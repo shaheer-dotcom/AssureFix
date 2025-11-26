@@ -1,11 +1,15 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
+import '../utils/error_handler.dart';
 
 class ApiService {
   static String get baseUrl => ApiConfig.apiUrl;
   static String? _authToken;
+  static const Duration _timeout = Duration(seconds: 30);
 
   static Map<String, String> get _headers {
     final headers = {
@@ -25,44 +29,97 @@ class ApiService {
     _authToken = null;
   }
 
+  /// Handle HTTP response and throw appropriate exceptions
+  static dynamic _handleResponse(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) {
+        return {};
+      }
+      try {
+        return jsonDecode(response.body);
+      } catch (e) {
+        throw const FormatException('Invalid response format from server');
+      }
+    } else if (response.statusCode == 401) {
+      // Try to get specific error message from response
+      try {
+        final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+        final message = errorBody['message'] ?? errorBody['error'] ?? 'Invalid email or password';
+        throw AuthException(message);
+      } catch (e) {
+        if (e is AuthException) rethrow;
+        throw AuthException('Invalid email or password');
+      }
+    } else if (response.statusCode == 403) {
+      throw AuthException('Access denied. You do not have permission to perform this action.');
+    } else if (response.statusCode == 404) {
+      throw ServerException('Resource not found', response.statusCode);
+    } else if (response.statusCode >= 500) {
+      throw ServerException('Server error. Please try again later.', response.statusCode);
+    } else {
+      try {
+        final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+        final message = errorBody['message'] ?? errorBody['error'] ?? 'Request failed with status ${response.statusCode}';
+        throw ServerException(message, response.statusCode);
+      } catch (e) {
+        if (e is ServerException) rethrow;
+        throw ServerException('Request failed with status ${response.statusCode}', response.statusCode);
+      }
+    }
+  }
+
+  /// Wrap API calls with error handling and timeout
+  static Future<T> _executeRequest<T>(Future<http.Response> Function() request) async {
+    try {
+      final response = await request().timeout(_timeout);
+      return _handleResponse(response) as T;
+    } on TimeoutException {
+      throw NetworkException('Request timed out. Please check your connection and try again.');
+    } on FormatException catch (e) {
+      throw ValidationException(e.message);
+    } on AuthException {
+      rethrow;
+    } on ServerException {
+      rethrow;
+    } on NetworkException {
+      rethrow;
+    } catch (e) {
+      // Check for network-related errors
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('socket') ||
+          errorString.contains('connection refused') || 
+          errorString.contains('failed host lookup') ||
+          errorString.contains('network')) {
+        throw NetworkException();
+      }
+      throw ServerException('An unexpected error occurred: ${e.toString()}');
+    }
+  }
+
   // Auth endpoints
   static Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await http.post(
+    return await _executeRequest(() => http.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: _headers,
       body: jsonEncode({
         'email': email,
         'password': password,
       }),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Login failed');
-    }
+    ));
   }
 
   static Future<Map<String, dynamic>> sendOTP(String email) async {
-    final response = await http.post(
+    return await _executeRequest(() => http.post(
       Uri.parse('$baseUrl/auth/send-otp'),
       headers: _headers,
       body: jsonEncode({
         'email': email,
       }),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Failed to send OTP');
-    }
+    ));
   }
 
   static Future<Map<String, dynamic>> verifyOTP(String email, String otp, String password) async {
-    final response = await http.post(
+    return await _executeRequest(() => http.post(
       Uri.parse('$baseUrl/auth/verify-otp'),
       headers: _headers,
       body: jsonEncode({
@@ -70,150 +127,239 @@ class ApiService {
         'otp': otp,
         'password': password,
       }),
-    );
-
-    if (response.statusCode == 201) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'OTP verification failed');
-    }
+    ));
   }
 
   static Future<Map<String, dynamic>> resendOTP(String email) async {
-    final response = await http.post(
+    return await _executeRequest(() => http.post(
       Uri.parse('$baseUrl/auth/resend-otp'),
       headers: _headers,
       body: jsonEncode({
         'email': email,
       }),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Failed to resend OTP');
-    }
+    ));
   }
 
   static Future<Map<String, dynamic>> getCurrentUser() async {
-    final response = await http.get(
+    return await _executeRequest(() => http.get(
       Uri.parse('$baseUrl/auth/me'),
       headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to get user data');
-    }
+    ));
   }
 
   static Future<Map<String, dynamic>> createProfile(Map<String, dynamic> profileData) async {
-    final response = await http.post(
+    return await _executeRequest(() => http.post(
       Uri.parse('$baseUrl/users/profile'),
       headers: _headers,
       body: jsonEncode(profileData),
-    );
+    ));
+  }
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Profile creation failed');
+  // File upload (accepts both File and XFile)
+  static Future<String> uploadFile(dynamic file, String fieldName) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/upload'),
+      );
+      
+      if (_authToken != null) {
+        request.headers['Authorization'] = 'Bearer $_authToken';
+      }
+      
+      // Handle web vs mobile/desktop differently
+      if (kIsWeb) {
+        // On web, read bytes from XFile
+        final xFile = file as XFile;
+        final bytes = await xFile.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
+          fieldName,
+          bytes,
+          filename: xFile.name,
+        ));
+      } else {
+        // On mobile/desktop, use fromPath
+        final xFile = file as XFile;
+        request.files.add(await http.MultipartFile.fromPath(fieldName, xFile.path));
+      }
+      
+      final response = await request.send().timeout(_timeout);
+      final responseBody = await response.stream.bytesToString();
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(responseBody);
+        return data['filePath'];
+      } else {
+        final errorData = responseBody.isNotEmpty ? jsonDecode(responseBody) : {};
+        throw ServerException(errorData['message'] ?? 'File upload failed', response.statusCode);
+      }
+    } on TimeoutException {
+      throw NetworkException('Upload timed out. Please check your connection and try again.');
+    } catch (e) {
+      if (e is ServerException || e is NetworkException) rethrow;
+      // Check for network-related errors
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('socket') ||
+          errorString.contains('connection') ||
+          errorString.contains('network')) {
+        throw NetworkException();
+      }
+      throw ServerException('File upload failed: ${e.toString()}');
     }
   }
 
-  // File upload
-  static Future<String> uploadFile(File file, String fieldName) async {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/upload'),
-    );
-    
-    if (_authToken != null) {
-      request.headers['Authorization'] = 'Bearer $_authToken';
+  // Upload profile picture (accepts both File and XFile)
+  static Future<String> uploadProfilePicture(dynamic file) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/upload/profile-picture'),
+      );
+      
+      if (_authToken != null) {
+        request.headers['Authorization'] = 'Bearer $_authToken';
+      }
+      
+      // Handle web vs mobile/desktop differently
+      if (kIsWeb) {
+        final xFile = file as XFile;
+        final bytes = await xFile.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
+          'profilePicture',
+          bytes,
+          filename: xFile.name,
+        ));
+      } else {
+        final xFile = file as XFile;
+        request.files.add(await http.MultipartFile.fromPath('profilePicture', xFile.path));
+      }
+      
+      final response = await request.send().timeout(_timeout);
+      final responseBody = await response.stream.bytesToString();
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(responseBody);
+        return data['filePath'];
+      } else {
+        final errorData = responseBody.isNotEmpty ? jsonDecode(responseBody) : {};
+        throw ServerException(errorData['message'] ?? 'Profile picture upload failed', response.statusCode);
+      }
+    } on TimeoutException {
+      throw NetworkException('Upload timed out. Please check your connection and try again.');
+    } catch (e) {
+      if (e is ServerException || e is NetworkException) rethrow;
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('socket') ||
+          errorString.contains('connection') ||
+          errorString.contains('network')) {
+        throw NetworkException();
+      }
+      throw ServerException('Profile picture upload failed: ${e.toString()}');
     }
-    
-    request.files.add(await http.MultipartFile.fromPath(fieldName, file.path));
-    
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(responseBody);
-      return data['filePath'];
-    } else {
-      throw Exception('File upload failed');
+  }
+
+  // Upload banner image (accepts both File and XFile)
+  static Future<String> uploadBanner(dynamic file) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/upload/banner'),
+      );
+      
+      if (_authToken != null) {
+        request.headers['Authorization'] = 'Bearer $_authToken';
+      }
+      
+      // Handle web vs mobile/desktop differently
+      if (kIsWeb) {
+        final xFile = file as XFile;
+        final bytes = await xFile.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
+          'banner',
+          bytes,
+          filename: xFile.name,
+        ));
+      } else {
+        final xFile = file as XFile;
+        request.files.add(await http.MultipartFile.fromPath('banner', xFile.path));
+      }
+      
+      final response = await request.send().timeout(_timeout);
+      final responseBody = await response.stream.bytesToString();
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(responseBody);
+        return data['filePath'];
+      } else {
+        final errorData = responseBody.isNotEmpty ? jsonDecode(responseBody) : {};
+        throw ServerException(errorData['message'] ?? 'Banner upload failed', response.statusCode);
+      }
+    } on TimeoutException {
+      throw NetworkException('Upload timed out. Please check your connection and try again.');
+    } catch (e) {
+      if (e is ServerException || e is NetworkException) rethrow;
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('socket') ||
+          errorString.contains('connection') ||
+          errorString.contains('network')) {
+        throw NetworkException();
+      }
+      throw ServerException('Banner upload failed: ${e.toString()}');
     }
+  }
+
+  // Update profile
+  static Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> profileData) async {
+    return await _executeRequest(() => http.put(
+      Uri.parse('$baseUrl/users/profile'),
+      headers: _headers,
+      body: jsonEncode(profileData),
+    ));
   }
 
   // Booking endpoints
   static Future<Map<String, dynamic>> createBooking(Map<String, dynamic> bookingData) async {
-    final response = await http.post(
+    return await _executeRequest(() => http.post(
       Uri.parse('$baseUrl/bookings'),
       headers: _headers,
       body: jsonEncode(bookingData),
-    );
-
-    if (response.statusCode == 201) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Booking creation failed');
-    }
+    ));
   }
 
   static Future<List<dynamic>> getUserBookings() async {
-    final response = await http.get(
+    return await _executeRequest(() => http.get(
       Uri.parse('$baseUrl/bookings/my-bookings'),
       headers: _headers,
-    );
+    ));
+  }
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Failed to get bookings');
+  static Future<Map<String, dynamic>> updateBookingStatus(String bookingId, String status, {String? cancellationReason}) async {
+    final body = <String, dynamic>{'status': status};
+    if (cancellationReason != null) {
+      body['cancellationReason'] = cancellationReason;
     }
+    
+    return await _executeRequest(() => http.patch(
+      Uri.parse('$baseUrl/bookings/$bookingId/status'),
+      headers: _headers,
+      body: jsonEncode(body),
+    ));
   }
 
   // Service endpoints
   static Future<Map<String, dynamic>> createService(Map<String, dynamic> serviceData) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/services'),
-        headers: _headers,
-        body: jsonEncode(serviceData),
-      );
-
-      if (response.statusCode == 201) {
-        return jsonDecode(response.body);
-      } else {
-        final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-        throw Exception(errorBody['message'] ?? 'Service creation failed');
-      }
-    } catch (e) {
-      if (e is FormatException) {
-        throw Exception('Invalid data format. Please check your input.');
-      }
-      rethrow;
-    }
+    return await _executeRequest(() => http.post(
+      Uri.parse('$baseUrl/services'),
+      headers: _headers,
+      body: jsonEncode(serviceData),
+    ));
   }
 
   static Future<List<dynamic>> getUserServices() async {
-    final response = await http.get(
+    return await _executeRequest(() => http.get(
       Uri.parse('$baseUrl/services/my-services'),
       headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Failed to get services');
-    }
+    ));
   }
 
   static Future<List<dynamic>> searchServices({String? query, String? category, String? location}) async {
@@ -223,36 +369,23 @@ class ApiService {
     if (location != null) queryParams['location'] = location;
 
     final uri = Uri.parse('$baseUrl/services').replace(queryParameters: queryParams);
-    final response = await http.get(uri, headers: _headers);
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      // The backend returns an object with 'services' array, not a direct array
-      if (responseData is Map<String, dynamic> && responseData.containsKey('services')) {
-        return responseData['services'] as List<dynamic>;
-      }
-      // Fallback for direct array response
-      return responseData as List<dynamic>;
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Search failed');
+    final responseData = await _executeRequest<dynamic>(() => http.get(uri, headers: _headers));
+    
+    // The backend returns an object with 'services' array, not a direct array
+    if (responseData is Map<String, dynamic> && responseData.containsKey('services')) {
+      return responseData['services'] as List<dynamic>;
     }
+    // Fallback for direct array response
+    return responseData as List<dynamic>;
   }
 
   // Rating endpoints
   static Future<Map<String, dynamic>> createRating(Map<String, dynamic> ratingData) async {
-    final response = await http.post(
+    return await _executeRequest(() => http.post(
       Uri.parse('$baseUrl/ratings'),
       headers: _headers,
       body: jsonEncode(ratingData),
-    );
-
-    if (response.statusCode == 201) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Rating creation failed');
-    }
+    ));
   }
 
   static Future<Map<String, dynamic>> getUserRatings(String userId, {String? type}) async {
@@ -260,81 +393,129 @@ class ApiService {
     if (type != null) queryParams['type'] = type;
 
     final uri = Uri.parse('$baseUrl/ratings/user/$userId').replace(queryParameters: queryParams);
-    final response = await http.get(uri, headers: _headers);
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Failed to get ratings');
-    }
+    return await _executeRequest(() => http.get(uri, headers: _headers));
   }
 
   static Future<List<dynamic>> getGivenRatings() async {
-    final response = await http.get(
+    return await _executeRequest(() => http.get(
       Uri.parse('$baseUrl/ratings/given'),
       headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Failed to get given ratings');
-    }
+    ));
   }
 
   static Future<Map<String, dynamic>> updateRating(String ratingId, Map<String, dynamic> ratingData) async {
-    final response = await http.put(
+    return await _executeRequest(() => http.put(
       Uri.parse('$baseUrl/ratings/$ratingId'),
       headers: _headers,
       body: jsonEncode(ratingData),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Rating update failed');
-    }
+    ));
   }
 
   static Future<void> deleteRating(String ratingId) async {
-    final response = await http.delete(
+    await _executeRequest(() => http.delete(
       Uri.parse('$baseUrl/ratings/$ratingId'),
       headers: _headers,
-    );
-
-    if (response.statusCode != 200) {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Rating deletion failed');
-    }
+    ));
   }
 
   // Service management endpoints
   static Future<Map<String, dynamic>> toggleServiceStatus(String serviceId) async {
-    final response = await http.patch(
+    return await _executeRequest(() => http.patch(
       Uri.parse('$baseUrl/services/$serviceId/toggle-status'),
       headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Failed to toggle service status');
-    }
+    ));
   }
 
   static Future<void> deleteService(String serviceId) async {
-    final response = await http.delete(
+    await _executeRequest(() => http.delete(
       Uri.parse('$baseUrl/services/$serviceId'),
       headers: _headers,
-    );
+    ));
+  }
 
-    if (response.statusCode != 200) {
-      final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorBody['message'] ?? 'Service deletion failed');
+  static Future<Map<String, dynamic>> getServiceById(String serviceId) async {
+    return await _executeRequest(() => http.get(
+      Uri.parse('$baseUrl/services/$serviceId'),
+      headers: _headers,
+    ));
+  }
+
+  static Future<Map<String, dynamic>> updateService(String serviceId, Map<String, dynamic> serviceData) async {
+    return await _executeRequest(() => http.put(
+      Uri.parse('$baseUrl/services/$serviceId'),
+      headers: _headers,
+      body: jsonEncode(serviceData),
+    ));
+  }
+
+  // Notification endpoints
+  static Future<List<dynamic>> getNotifications() async {
+    final responseData = await _executeRequest<dynamic>(() => http.get(
+      Uri.parse('$baseUrl/notifications'),
+      headers: _headers,
+    ));
+    
+    // The backend returns an object with 'notifications' array, not a direct array
+    if (responseData is Map<String, dynamic> && responseData.containsKey('notifications')) {
+      return responseData['notifications'] as List<dynamic>;
     }
+    // Fallback for direct array response
+    return responseData as List<dynamic>;
+  }
+
+  static Future<void> markNotificationAsRead(String notificationId) async {
+    await _executeRequest(() => http.patch(
+      Uri.parse('$baseUrl/notifications/$notificationId/read'),
+      headers: _headers,
+    ));
+  }
+
+  static Future<void> markAllNotificationsAsRead() async {
+    await _executeRequest(() => http.patch(
+      Uri.parse('$baseUrl/notifications/read-all'),
+      headers: _headers,
+    ));
+  }
+
+  static Future<int> getUnreadNotificationCount() async {
+    try {
+      final data = await _executeRequest<Map<String, dynamic>>(() => http.get(
+        Uri.parse('$baseUrl/notifications/unread-count'),
+        headers: _headers,
+      ));
+      return data['unreadCount'] ?? 0;
+    } catch (e) {
+      // Return 0 on error to avoid breaking the UI
+      return 0;
+    }
+  }
+
+  // Settings endpoints
+  static Future<Map<String, dynamic>> requestPasswordChange(String newPassword) async {
+    return await _executeRequest(() => http.post(
+      Uri.parse('$baseUrl/settings/change-password-request'),
+      headers: _headers,
+      body: jsonEncode({
+        'newPassword': newPassword,
+      }),
+    ));
+  }
+
+  static Future<Map<String, dynamic>> verifyPasswordChange(String otp) async {
+    return await _executeRequest(() => http.post(
+      Uri.parse('$baseUrl/settings/change-password-verify'),
+      headers: _headers,
+      body: jsonEncode({
+        'otp': otp,
+      }),
+    ));
+  }
+
+  static Future<Map<String, dynamic>> getFAQs({String? role}) async {
+    final queryParams = <String, String>{};
+    if (role != null) queryParams['role'] = role;
+
+    final uri = Uri.parse('$baseUrl/settings/faqs').replace(queryParameters: queryParams);
+    return await _executeRequest(() => http.get(uri, headers: _headers));
   }
 }

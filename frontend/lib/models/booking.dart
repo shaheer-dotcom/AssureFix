@@ -13,6 +13,11 @@ class Booking {
   final bool canCancel;
   final DateTime createdAt;
   final DateTime updatedAt;
+  
+  // Populated fields from backend
+  final String? customerName;
+  final String? providerName;
+  final String? serviceName;
 
   Booking({
     required this.id,
@@ -29,6 +34,9 @@ class Booking {
     required this.canCancel,
     required this.createdAt,
     required this.updatedAt,
+    this.customerName,
+    this.providerName,
+    this.serviceName,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -38,6 +46,27 @@ class Booking {
       if (value is String) return value;
       if (value is Map) return value['_id']?.toString() ?? '';
       return value.toString();
+    }
+    
+    // Helper function to extract name from populated user object
+    String? extractName(dynamic value) {
+      if (value == null) return null;
+      if (value is Map) {
+        final profile = value['profile'];
+        if (profile is Map) {
+          return profile['name']?.toString();
+        }
+      }
+      return null;
+    }
+    
+    // Helper function to extract service name
+    String? extractServiceName(dynamic value) {
+      if (value == null) return null;
+      if (value is Map) {
+        return value['serviceName']?.toString();
+      }
+      return null;
     }
 
     return Booking(
@@ -67,6 +96,9 @@ class Booking {
       updatedAt: DateTime.parse(
         json['updatedAt'] ?? DateTime.now().toIso8601String()
       ),
+      customerName: extractName(json['customerId']),
+      providerName: extractName(json['providerId']),
+      serviceName: extractServiceName(json['serviceId']),
     );
   }
 

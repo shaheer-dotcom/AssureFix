@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../providers/auth_provider.dart';
 import '../../providers/messages_provider.dart';
+import '../../widgets/empty_state_widget.dart';
 import 'whatsapp_chat_screen.dart';
 import 'new_message_screen.dart';
 
@@ -209,50 +210,6 @@ class _EnhancedMessagesScreenState extends State<EnhancedMessagesScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.chat_bubble_outline,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No Conversations Yet',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              'Start a conversation by booking a service or messaging a provider',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NewMessageScreen(),
-                ),
-              ).then((_) => _loadConversations());
-            },
-            icon: const Icon(Icons.chat_bubble_outline),
-            label: const Text('Start Conversation'),
-          ),
-        ],
-      ),
-    );
+    return EmptyStateWidget.noMessages();
   }
 }

@@ -12,17 +12,22 @@ router.post('/', auth, async (req, res) => {
       serviceName,
       description,
       category,
-      area,
-      areaCovered,
+      areaTags,
       price,
       pricePerHour,
       priceType
     } = req.body;
 
     // Validation
-    if (!name || !description || !category || !area || !price) {
+    if (!name || !description || !category || !areaTags || !price) {
       return res.status(400).json({
-        message: 'Name, description, category, area, and price are required'
+        message: 'Name, description, category, area tags, and price are required'
+      });
+    }
+
+    if (!Array.isArray(areaTags) || areaTags.length === 0) {
+      return res.status(400).json({
+        message: 'At least one area tag is required'
       });
     }
 
@@ -32,6 +37,9 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    // Sanitize area tags
+    const sanitizedAreaTags = areaTags.map(tag => tag.trim()).filter(tag => tag.length > 0);
+
     // Create new service
     const service = new Service({
       providerId: req.user._id,
@@ -39,8 +47,7 @@ router.post('/', auth, async (req, res) => {
       serviceName: serviceName || name.trim(),
       description: description.trim(),
       category,
-      area: area.trim(),
-      areaCovered: areaCovered || area.trim(),
+      areaTags: sanitizedAreaTags,
       price,
       pricePerHour: pricePerHour || price,
       priceType: priceType || 'fixed',
@@ -94,20 +101,12 @@ router.get('/', async (req, res) => {
         // If search query already created $or, combine with location using $and
         query.$and = [
           { $or: query.$or },
-          {
-            $or: [
-              { area: { $regex: locationRegex } },
-              { areaCovered: { $regex: locationRegex } }
-            ]
-          }
+          { areaTags: { $elemMatch: { $regex: locationRegex } } }
         ];
         delete query.$or;
       } else {
         // If no search query, just add location filter
-        query.$or = [
-          { area: { $regex: locationRegex } },
-          { areaCovered: { $regex: locationRegex } }
-        ];
+        query.areaTags = { $elemMatch: { $regex: locationRegex } };
       }
     }
 
@@ -117,10 +116,24 @@ router.get('/', async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
+    // Filter out services from blocked users if user is authenticated
+    let filteredServices = services;
+    if (req.user) {
+      const User = require('../models/User');
+      const currentUser = await User.findById(req.user._id).select('blockedUsers');
+      
+      if (currentUser && currentUser.blockedUsers.length > 0) {
+        const blockedUserIds = currentUser.blockedUsers.map(id => id.toString());
+        filteredServices = services.filter(service => 
+          !blockedUserIds.includes(service.providerId._id.toString())
+        );
+      }
+    }
+
     const total = await Service.countDocuments(query);
 
     res.json({
-      services,
+      services: filteredServices,
       pagination: {
         current: page,
         pages: Math.ceil(total / limit),

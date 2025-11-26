@@ -131,12 +131,13 @@ class ConversationProvider with ChangeNotifier {
       _conversations.addAll([
         {
           'id': 'demo1',
-          'name': 'John Doe',
-          'lastMessage': 'Thank you for the excellent service!',
-          'time': '2 min ago',
-          'unreadCount': 2,
-          'avatar': 'J',
-          'isOnline': true,
+          'name': 'Anjiya Baaji',
+          'lastMessage': 'how are you?',
+          'time': '20 hours ago',
+          'unreadCount': 3,
+          'avatar': 'A',
+          'isOnline': false,
+          'role': 'electrician',
         },
         {
           'id': 'demo2',
@@ -162,23 +163,23 @@ class ConversationProvider with ChangeNotifier {
       _messages['demo1'] = [
         {
           'id': '1',
-          'text': 'Hi, I need your service for my home',
-          'isMe': false,
-          'time': '10:30 AM',
+          'text': 'Hi, I need electrical work done',
+          'isMe': true,
+          'time': 'Yesterday',
           'type': 'text',
         },
         {
           'id': '2',
-          'text': 'Sure! I can help you. What kind of service do you need?',
-          'isMe': true,
-          'time': '10:32 AM',
+          'text': 'Sure! I can help you with that',
+          'isMe': false,
+          'time': 'Yesterday',
           'type': 'text',
         },
         {
           'id': '3',
-          'text': 'Thank you for the excellent service!',
+          'text': 'how are you?',
           'isMe': false,
-          'time': '2 min ago',
+          'time': '20 hours ago',
           'type': 'text',
         },
       ];

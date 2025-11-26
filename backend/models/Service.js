@@ -39,16 +39,11 @@ const serviceSchema = new mongoose.Schema({
       'Other'
     ]
   },
-  area: {
+  areaTags: [{
     type: String,
     required: true,
     trim: true
-  },
-  areaCovered: {
-    type: String,
-    required: true,
-    trim: true
-  },
+  }],
   price: {
     type: Number,
     required: true,
@@ -94,12 +89,12 @@ const serviceSchema = new mongoose.Schema({
 serviceSchema.index({ 
   name: 'text', 
   description: 'text', 
-  category: 1, 
-  area: 1 
+  category: 1
 });
 
 serviceSchema.index({ providerId: 1 });
-serviceSchema.index({ category: 1, area: 1 });
+serviceSchema.index({ areaTags: 1 }); // Index for area tag search
+serviceSchema.index({ category: 1, areaTags: 1 });
 serviceSchema.index({ isActive: 1 });
 
 module.exports = mongoose.model('Service', serviceSchema);

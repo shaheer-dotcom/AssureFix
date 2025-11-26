@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/report_dialog.dart';
 
 class UserProfileViewScreen extends StatefulWidget {
   final String userId;
@@ -23,6 +24,8 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
   List<dynamic> _services = [];
   bool _isLoading = true;
   String? _error;
+  bool _isBlocked = false;
+  bool _isBlockActionLoading = false;
 
   String get _baseUrl {
     return kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000';
@@ -47,7 +50,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
       if (token != null) {
         // Get user profile
         final profileResponse = await http.get(
-          Uri.parse('$_baseUrl/api/users/${widget.userId}'),
+          Uri.parse('$_baseUrl/api/users/profile/${widget.userId}'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -74,6 +77,9 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
             }
           }
 
+          // Check if user is blocked
+          await _checkIfBlocked();
+
           setState(() {
             _userProfile = profileData;
             _services = services;
@@ -94,6 +100,189 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
     }
   }
 
+  Future<void> _checkIfBlocked() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token != null) {
+        final response = await http.get(
+          Uri.parse('$_baseUrl/api/users/blocked'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final blockedUsers = data['blockedUsers'] as List;
+          setState(() {
+            _isBlocked = blockedUsers.any((user) => user['_id'] == widget.userId);
+          });
+        }
+      }
+    } catch (e) {
+      // Silently fail - blocking status is not critical
+    }
+  }
+
+  Future<void> _blockUser() async {
+    setState(() {
+      _isBlockActionLoading = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        throw Exception('Not authenticated');
+      }
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/users/block/${widget.userId}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _isBlocked = true;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('User blocked successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to block user');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isBlockActionLoading = false;
+      });
+    }
+  }
+
+  Future<void> _unblockUser() async {
+    setState(() {
+      _isBlockActionLoading = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        throw Exception('Not authenticated');
+      }
+
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/api/users/block/${widget.userId}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _isBlocked = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('User unblocked successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to unblock user');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isBlockActionLoading = false;
+      });
+    }
+  }
+
+  Future<void> _showReportDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => ReportDialog(
+        reportedUserId: widget.userId,
+        reportedUserName: widget.userName,
+      ),
+    );
+
+    if (result == true) {
+      // Report submitted successfully
+    }
+  }
+
+  Future<void> _showBlockConfirmation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(_isBlocked ? 'Unblock User' : 'Block User'),
+        content: Text(
+          _isBlocked
+              ? 'Are you sure you want to unblock ${widget.userName}? You will be able to see their services and communicate with them again.'
+              : 'Are you sure you want to block ${widget.userName}? You will not be able to see their services or communicate with them.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _isBlocked ? Colors.green : Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(_isBlocked ? 'Unblock' : 'Block'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      if (_isBlocked) {
+        await _unblockUser();
+      } else {
+        await _blockUser();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,6 +291,42 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
         backgroundColor: const Color(0xFF1565C0),
         foregroundColor: Colors.white,
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            enabled: !_isBlockActionLoading,
+            onSelected: (value) {
+              if (value == 'report') {
+                _showReportDialog();
+              } else if (value == 'block') {
+                _showBlockConfirmation();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'report',
+                child: Row(
+                  children: [
+                    Icon(Icons.flag, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Report User'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'block',
+                child: Row(
+                  children: [
+                    Icon(
+                      _isBlocked ? Icons.check_circle : Icons.block,
+                      color: _isBlocked ? Colors.green : Colors.red,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(_isBlocked ? 'Unblock User' : 'Block User'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadUserProfile,

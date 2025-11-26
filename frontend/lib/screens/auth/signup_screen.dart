@@ -74,6 +74,11 @@ class _SignupScreenState extends State<SignupScreen> {
                         hintText: 'Enter your email',
                         prefixIcon: Icon(Icons.email),
                       ),
+                      onTap: () {
+                        if (authProvider.error != null) {
+                          authProvider.clearError();
+                        }
+                      },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your email';
@@ -105,6 +110,11 @@ class _SignupScreenState extends State<SignupScreen> {
                           },
                         ),
                       ),
+                      onTap: () {
+                        if (authProvider.error != null) {
+                          authProvider.clearError();
+                        }
+                      },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your password';
@@ -136,6 +146,11 @@ class _SignupScreenState extends State<SignupScreen> {
                           },
                         ),
                       ),
+                      onTap: () {
+                        if (authProvider.error != null) {
+                          authProvider.clearError();
+                        }
+                      },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please confirm your password';

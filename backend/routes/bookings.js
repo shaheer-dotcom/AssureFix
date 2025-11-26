@@ -2,7 +2,15 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
+const User = require('../models/User');
+const Conversation = require('../models/Conversation');
 const auth = require('../middleware/auth');
+const {
+  notifyBookingCreated,
+  notifyBookingAccepted,
+  notifyBookingCompleted,
+  notifyBookingCancelled
+} = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -65,6 +73,18 @@ router.post('/', auth, [
     // Update service booking count
     service.totalBookings += 1;
     await service.save();
+
+    // Create conversation for this booking
+    const conversation = new Conversation({
+      participants: [req.user._id, service.providerId],
+      relatedBooking: booking._id,
+      isActive: true
+    });
+    await conversation.save();
+
+    // Send notification to provider
+    const customer = await User.findById(req.user._id);
+    await notifyBookingCreated(booking, service, customer);
 
     res.status(201).json(booking);
   } catch (error) {
@@ -165,8 +185,33 @@ router.patch('/:id/status', auth, [
       booking.cancelledBy = isCustomer ? 'customer' : 'provider';
     }
 
+    const previousStatus = booking.status;
     booking.status = status;
     await booking.save();
+
+    // Populate booking data for notifications
+    await booking.populate(['serviceId', 'providerId', 'customerId']);
+    const service = booking.serviceId;
+    const provider = booking.providerId;
+    const customer = booking.customerId;
+
+    // Update conversation isActive status based on booking status
+    if (status === 'completed' || status === 'cancelled') {
+      await Conversation.updateOne(
+        { relatedBooking: booking._id },
+        { isActive: false }
+      );
+    }
+
+    // Send notifications based on status change
+    if (status === 'confirmed' && previousStatus === 'pending') {
+      await notifyBookingAccepted(booking, service, provider);
+    } else if (status === 'completed') {
+      await notifyBookingCompleted(booking, service, customer, provider);
+    } else if (status === 'cancelled') {
+      const cancelledBy = booking.cancelledBy;
+      await notifyBookingCancelled(booking, service, customer, provider, cancelledBy);
+    }
 
     res.json(booking);
   } catch (error) {

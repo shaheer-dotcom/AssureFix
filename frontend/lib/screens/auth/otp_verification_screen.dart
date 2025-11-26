@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import 'role_selection_screen.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String email;
@@ -126,13 +127,21 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           keyboardType: TextInputType.number,
                           maxLength: 1,
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
+                            color: Colors.black,
                           ),
                           decoration: InputDecoration(
                             counterText: '',
+                            filled: true,
+                            fillColor: Colors.white,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -145,6 +154,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
                           ],
+                          onTap: () {
+                            // Clear error when user taps on any OTP field
+                            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                            if (authProvider.error != null) {
+                              authProvider.clearError();
+                            }
+                          },
                           onChanged: (value) {
                             if (value.isNotEmpty && index < 5) {
                               _focusNodes[index + 1].requestFocus();
@@ -256,12 +272,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     final otp = _otpControllers.map((controller) => controller.text).join();
     
     if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter the complete 6-digit code'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter the complete 6-digit code'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       return;
     }
 
@@ -278,9 +296,11 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         ),
       );
       
-      // Navigate back to let AuthWrapper handle the routing
-      // Pop all routes and let AuthWrapper redirect to profile setup
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      // Navigate to role selection screen
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+        (route) => false,
+      );
     }
     // Error handling is done by the AuthProvider setting the error state
   }
@@ -289,7 +309,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final success = await authProvider.resendOTP(widget.email);
     
-    if (success) {
+    if (success && mounted) {
       setState(() {
         _remainingTime = 600; // Reset timer to 10 minutes
         _canResend = false;

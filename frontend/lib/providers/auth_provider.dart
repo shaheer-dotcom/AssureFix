@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
+import '../utils/error_handler.dart';
 
 class AuthProvider with ChangeNotifier {
   User? _user;
@@ -21,6 +22,11 @@ class AuthProvider with ChangeNotifier {
 
   void setError(String? error) {
     _error = error;
+    notifyListeners();
+  }
+
+  void clearError() {
+    _error = null;
     notifyListeners();
   }
 
@@ -61,7 +67,7 @@ class AuthProvider with ChangeNotifier {
       setLoading(false);
       return true;
     } catch (e) {
-      setError(e.toString());
+      setError(ErrorHandler.getErrorMessage(e));
       setLoading(false);
       return false;
     }
@@ -76,7 +82,7 @@ class AuthProvider with ChangeNotifier {
       setLoading(false);
       return true;
     } catch (e) {
-      setError(e.toString());
+      setError(ErrorHandler.getErrorMessage(e));
       setLoading(false);
       return false;
     }
@@ -91,7 +97,7 @@ class AuthProvider with ChangeNotifier {
       setLoading(false);
       return true;
     } catch (e) {
-      setError(e.toString());
+      setError(ErrorHandler.getErrorMessage(e));
       setLoading(false);
       return false;
     }
@@ -116,7 +122,7 @@ class AuthProvider with ChangeNotifier {
       setLoading(false);
       return true;
     } catch (e) {
-      setError(e.toString());
+      setError(ErrorHandler.getErrorMessage(e));
       setLoading(false);
       return false;
     }
@@ -131,7 +137,7 @@ class AuthProvider with ChangeNotifier {
       setLoading(false);
       return true;
     } catch (e) {
-      setError(e.toString());
+      setError(ErrorHandler.getErrorMessage(e));
       setLoading(false);
       return false;
     }
@@ -147,7 +153,24 @@ class AuthProvider with ChangeNotifier {
       setLoading(false);
       return true;
     } catch (e) {
-      setError(e.toString());
+      setError(ErrorHandler.getErrorMessage(e));
+      setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> updateProfile(Map<String, dynamic> profileData) async {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      final response = await ApiService.updateProfile(profileData);
+      _user = User.fromJson(response);
+      setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      setError(ErrorHandler.getErrorMessage(e));
       setLoading(false);
       return false;
     }

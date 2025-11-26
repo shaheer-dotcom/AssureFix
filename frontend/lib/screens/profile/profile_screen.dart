@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../config/api_config.dart';
 import 'edit_profile_screen.dart';
+import 'ratings_view_screen.dart';
 import '../admin/admin_login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -12,7 +14,19 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text(
+          'Profile',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -40,28 +54,61 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Banner Image (Service Provider only)
+                if (user.profile?.userType == 'service_provider' && 
+                    user.profile?.bannerImage != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      '${ApiConfig.baseUrlWithoutApi}${user.profile!.bannerImage}',
+                      height: 150,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 150,
+                          color: Colors.grey.shade300,
+                          child: const Center(
+                            child: Icon(Icons.image, size: 50, color: Colors.grey),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 // Profile Header
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Row(
                       children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Theme.of(context).primaryColor,
-                          child: Text(
-                            (user.profile?.name.isNotEmpty == true)
-                                ? user.profile!.name
-                                    .substring(0, 1)
-                                    .toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                        // Profile Picture
+                        user.profile?.profilePicture != null
+                            ? CircleAvatar(
+                                radius: 40,
+                                backgroundImage: NetworkImage(
+                                  '${ApiConfig.baseUrlWithoutApi}${user.profile!.profilePicture}',
+                                ),
+                                backgroundColor: Theme.of(context).primaryColor,
+                              )
+                            : CircleAvatar(
+                                radius: 40,
+                                backgroundColor: Theme.of(context).primaryColor,
+                                child: Text(
+                                  (user.profile?.name.isNotEmpty == true)
+                                      ? user.profile!.name
+                                          .substring(0, 1)
+                                          .toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
@@ -153,42 +200,102 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Rating Information
-                const Card(
+                Card(
                   child: Padding(
-                    padding: EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Rating & Reviews',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 12),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(Icons.star,
-                                color: Colors.amber, size: 24),
-                            SizedBox(width: 8),
-                            Text(
-                              '0.0',
+                            const Text(
+                              'Rating & Reviews',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(width: 8),
-                            Text(
-                              '(0 reviews)',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RatingsViewScreen(
+                                      userId: user.id,
+                                      ratingType: user.profile?.userType == 'service_provider' 
+                                          ? 'service_provider' 
+                                          : 'customer',
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text('View All'),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+                        if (user.profile?.userType == 'service_provider') ...[
+                          Row(
+                            children: [
+                              const Icon(Icons.star, color: Colors.amber, size: 24),
+                              const SizedBox(width: 8),
+                              Text(
+                                user.serviceProviderRating.average.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '(${user.serviceProviderRating.count} reviews)',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'As Service Provider',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ] else ...[
+                          Row(
+                            children: [
+                              const Icon(Icons.star, color: Colors.amber, size: 24),
+                              const SizedBox(width: 8),
+                              Text(
+                                user.customerRating.average.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '(${user.customerRating.count} reviews)',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'As Customer',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

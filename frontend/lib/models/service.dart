@@ -5,8 +5,7 @@ class Service {
   final String serviceName;
   final String description;
   final String category;
-  final String area;
-  final String areaCovered;
+  final List<String> areaTags;
   final double price;
   final double pricePerHour;
   final String priceType; // 'fixed' or 'hourly'
@@ -22,8 +21,7 @@ class Service {
     required this.serviceName,
     required this.description,
     required this.category,
-    required this.area,
-    required this.areaCovered,
+    required this.areaTags,
     required this.price,
     required this.pricePerHour,
     required this.priceType,
@@ -32,6 +30,12 @@ class Service {
     required this.updatedAt,
     this.providerInfo,
   });
+
+  // Backward compatibility getter for area
+  String get area => areaTags.isNotEmpty ? areaTags.join(', ') : '';
+  
+  // Backward compatibility getter for areaCovered
+  String get areaCovered => area;
 
   String get providerName {
     if (providerInfo != null && providerInfo!['profile'] != null) {
@@ -64,6 +68,16 @@ class Service {
         }
       }
 
+      // Parse areaTags - handle both array and legacy string formats
+      List<String> areaTags = [];
+      if (json['areaTags'] != null && json['areaTags'] is List) {
+        areaTags = (json['areaTags'] as List).map((e) => e.toString()).toList();
+      } else if (json['area'] != null) {
+        // Backward compatibility: parse old area field
+        final areaStr = json['area'].toString();
+        areaTags = areaStr.split(RegExp(r'[\n,.]')).map((a) => a.trim()).where((a) => a.isNotEmpty).toList();
+      }
+
       return Service(
         id: json['_id']?.toString() ?? '',
         providerId: providerId,
@@ -71,8 +85,7 @@ class Service {
         serviceName: json['serviceName']?.toString() ?? json['name']?.toString() ?? '',
         description: json['description']?.toString() ?? '',
         category: json['category']?.toString() ?? '',
-        area: json['area']?.toString() ?? '',
-        areaCovered: json['areaCovered']?.toString() ?? json['area']?.toString() ?? '',
+        areaTags: areaTags,
         price: _parseDouble(json['price']),
         pricePerHour: _parseDouble(json['pricePerHour'] ?? json['price']),
         priceType: json['priceType']?.toString() ?? 'fixed',
@@ -114,8 +127,7 @@ class Service {
       'serviceName': serviceName,
       'description': description,
       'category': category,
-      'area': area,
-      'areaCovered': areaCovered,
+      'areaTags': areaTags,
       'price': price,
       'pricePerHour': pricePerHour,
       'priceType': priceType,

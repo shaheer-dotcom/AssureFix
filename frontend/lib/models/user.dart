@@ -72,6 +72,8 @@ class UserProfile {
   final String name;
   final String phoneNumber;
   final String userType; // 'customer' or 'service_provider'
+  final String? profilePicture;
+  final String? bannerImage;
   final String? cnicDocument;
   final String? shopDocument;
 
@@ -79,6 +81,8 @@ class UserProfile {
     required this.name,
     required this.phoneNumber,
     required this.userType,
+    this.profilePicture,
+    this.bannerImage,
     this.cnicDocument,
     this.shopDocument,
   });
@@ -88,6 +92,8 @@ class UserProfile {
       name: json['name'] ?? '',
       phoneNumber: json['phoneNumber'] ?? '',
       userType: json['userType'] ?? 'customer',
+      profilePicture: json['profilePicture'],
+      bannerImage: json['bannerImage'],
       cnicDocument: json['cnicDocument'],
       shopDocument: json['shopDocument'],
     );
@@ -98,6 +104,8 @@ class UserProfile {
       'name': name,
       'phoneNumber': phoneNumber,
       'userType': userType,
+      'profilePicture': profilePicture,
+      'bannerImage': bannerImage,
       'cnicDocument': cnicDocument,
       'shopDocument': shopDocument,
     };

@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../providers/service_provider.dart';
 import '../../models/service.dart';
+import '../../widgets/empty_state_widget.dart';
+import '../../widgets/confirmation_dialog.dart';
 import 'edit_service_screen.dart';
+import 'post_service_screen.dart';
 
 class ManageServicesScreen extends StatefulWidget {
   const ManageServicesScreen({super.key});
@@ -62,31 +65,15 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
           }
 
           if (serviceProvider.services.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.business_center_outlined,
-                    size: 64,
-                    color: Colors.grey.shade400,
+            return EmptyStateWidget.noServices(
+              onAction: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PostServiceScreen(),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No Services Yet',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'You haven\'t created any services yet.\nTap the + button to create your first service.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
+                );
+              },
             );
           }
 
@@ -184,25 +171,54 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Icon(
-                  Icons.location_on,
-                  size: 16,
-                  color: Colors.grey.shade600,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    service.area.replaceAll('\n', ' • ').replaceAll('.', ' • '),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                ...service.areaTags.take(3).map((tag) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade200),
                   ),
-                ),
-                const SizedBox(width: 16),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 12,
+                        color: Colors.blue.shade700,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        tag,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+                if (service.areaTags.length > 3)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '+${service.areaTags.length - 3}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 8),
                 const Icon(
                   Icons.star,
                   size: 16,
@@ -221,14 +237,14 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                     color: Colors.grey.shade600,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -236,7 +252,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade700,
+                      color: Colors.green.shade700,
                     ),
                   ),
                 ),
@@ -253,13 +269,23 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                         MaterialPageRoute(
                           builder: (context) => EditServiceScreen(service: service),
                         ),
-                      );
+                      ).then((_) {
+                        // Reload services after edit
+                        final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
+                        serviceProvider.loadUserServices();
+                      });
                     },
-                    icon: const Icon(Icons.edit, size: 16),
-                    label: const Text('Edit'),
+                    icon: const Icon(Icons.edit, size: 14),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Edit', style: TextStyle(fontSize: 12)),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
@@ -267,20 +293,37 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                     },
                     icon: Icon(
                       service.isActive ? Icons.pause : Icons.play_arrow,
-                      size: 16,
+                      size: 14,
                     ),
-                    label: Text(service.isActive ? 'Deactivate' : 'Activate'),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        service.isActive ? 'Pause' : 'Active',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      _showDeleteDialog(service);
+                      _deleteServiceWithConfirmation(service);
                     },
-                    icon: const Icon(Icons.delete, size: 16, color: Colors.red),
-                    label: const Text('Delete',
-                        style: TextStyle(color: Colors.red)),
+                    icon: const Icon(Icons.delete, size: 14, color: Colors.red),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.red, fontSize: 11),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                    ),
                   ),
                 ),
               ],
@@ -319,32 +362,14 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     );
   }
 
-  void _showDeleteDialog(Service service) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Service'),
-          content: Text(
-              'Are you sure you want to delete "${service.name}"? This action cannot be undone.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _deleteService(service);
-              },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
+  Future<void> _deleteServiceWithConfirmation(Service service) async {
+    final confirmed = await ConfirmationDialog.deleteService(context);
+    if (confirmed == true) {
+      await _deleteService(service);
+    }
   }
+
+
 
   void _toggleServiceStatus(Service service) async {
     try {
@@ -380,7 +405,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     }
   }
 
-  void _deleteService(Service service) async {
+  Future<void> _deleteService(Service service) async {
     try {
       final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
       print('Deleting service: ${service.id}');

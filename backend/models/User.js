@@ -40,6 +40,14 @@ const userProfileSchema = new mongoose.Schema({
     enum: ['customer', 'service_provider'],
     required: true
   },
+  profilePicture: {
+    type: String, // File path
+    default: null
+  },
+  bannerImage: {
+    type: String, // File path (service provider only)
+    default: null
+  },
   cnicDocument: {
     type: String, // File path (optional)
     default: null
@@ -103,7 +111,19 @@ const userSchema = new mongoose.Schema({
   otpExpiry: {
     type: Date,
     default: null
-  }
+  },
+  pendingPassword: {
+    type: String,
+    default: null
+  },
+  blockedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  reportedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 }, {
   timestamps: true
 });

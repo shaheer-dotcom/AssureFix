@@ -6,6 +6,8 @@ import 'notification_settings_screen.dart';
 import 'privacy_settings_screen.dart';
 import 'terms_screen.dart';
 import 'privacy_policy_screen.dart';
+import 'change_password_screen.dart';
+import '../support/help_support_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -72,6 +74,21 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     ListTile(
+                      leading: const Icon(Icons.lock),
+                      title: const Text('Change Password'),
+                      subtitle: const Text('Update your password'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ChangePasswordScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       leading: const Icon(Icons.privacy_tip),
                       title: const Text('Privacy'),
                       subtitle: const Text('Privacy and data settings'),
@@ -99,6 +116,21 @@ class SettingsScreen extends StatelessWidget {
                       leading: Icon(Icons.info),
                       title: Text('About'),
                       subtitle: Text('AssureFix v1.0.0'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.help_outline),
+                      title: const Text('Help & Support'),
+                      subtitle: const Text('FAQs and contact support'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HelpSupportScreen(),
+                          ),
+                        );
+                      },
                     ),
                     const Divider(height: 1),
                     ListTile(
