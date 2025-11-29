@@ -540,7 +540,7 @@ class _ServiceProviderHomeScreenState extends State<ServiceProviderHomeScreen> {
 
       // Submit rating
       await ApiService.createRating({
-        'ratedUser': booking.customerId,
+        'ratedUserId': booking.customerId,
         'ratingType': 'customer',
         'stars': stars,
         'comment': comment,

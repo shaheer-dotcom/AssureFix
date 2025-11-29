@@ -5,6 +5,7 @@ import '../../providers/booking_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../models/booking.dart';
 import '../../services/api_service.dart';
+import '../../config/api_config.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -164,7 +165,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           ? CircleAvatar(
                               radius: 30,
                               backgroundImage: NetworkImage(
-                                'http://localhost:5000${user!.profile!.profilePicture}',
+                                '${ApiConfig.baseUrlWithoutApi}${user!.profile!.profilePicture}',
                               ),
                               backgroundColor: Theme.of(context).primaryColor,
                               onBackgroundImageError: (exception, stackTrace) {
@@ -672,10 +673,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
       // Submit rating
       await ApiService.createRating({
-        'ratedUser': booking.providerId,
+        'ratedUserId': booking.providerId,
         'ratingType': 'service_provider',
         'stars': stars,
-        'review': review,
+        'comment': review,
         'relatedBooking': booking.id,
         'relatedService': booking.serviceId,
       });

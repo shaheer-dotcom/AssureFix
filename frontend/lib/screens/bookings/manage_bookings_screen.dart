@@ -487,16 +487,32 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
     TimeOfDay time,
   ) async {
     try {
-      // Here you would make an API call to update the booking
-      // For now, we'll simulate the update
-      await Future.delayed(const Duration(seconds: 1));
+      // Combine date and time
+      final dateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+
+      // Prepare booking update data
+      final updateData = {
+        'customerDetails': {
+          'name': name,
+          'phoneNumber': phone,
+          'exactAddress': address,
+        },
+        'reservationDate': dateTime.toIso8601String(),
+      };
+
+      // Call API to update booking
+      await ApiService.updateBooking(booking.id, updateData);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Booking updated successfully'),
-            backgroundColor: Colors.green,
-          ),
+        ErrorHandler.showSuccessSnackBar(
+          context,
+          'Booking updated successfully',
         );
         
         // Reload bookings to reflect the change
@@ -504,11 +520,10 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update booking: $e'),
-            backgroundColor: Colors.red,
-          ),
+        ErrorHandler.showErrorSnackBar(
+          context,
+          ErrorHandler.getErrorMessage(e),
+          onRetry: () => _updateBooking(booking, name, phone, address, date, time),
         );
       }
     }

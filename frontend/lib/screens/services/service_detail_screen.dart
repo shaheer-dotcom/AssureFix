@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:typed_data' show Uint8List;
 
 import '../../models/service.dart';
 import '../../providers/booking_provider.dart';
-import '../../providers/conversation_provider.dart';
+import '../../config/api_config.dart';
 import '../bookings/booking_form_screen.dart';
-import '../messages/chat_screen.dart';
+import '../messages/whatsapp_chat_screen.dart';
 import '../profile/ratings_view_screen.dart';
 
 class ServiceDetailScreen extends StatelessWidget {
@@ -221,25 +225,9 @@ class ServiceDetailScreen extends StatelessWidget {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {
-                          // Create conversation and navigate to chat
-                          final conversationProvider = Provider.of<ConversationProvider>(context, listen: false);
-                          conversationProvider.addConversation(
-                            service.providerId,
-                            service.providerName,
-                            service.providerName.substring(0, 1).toUpperCase(),
-                          );
-                          
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatScreen(
-                                conversationId: service.providerId,
-                                userName: service.providerName,
-                                userAvatar: service.providerName.substring(0, 1).toUpperCase(),
-                              ),
-                            ),
-                          );
+                        onPressed: () async {
+                          // Find existing conversation or show message
+                          await _navigateToConversation(context, service);
                         },
                         child: const Text('Message'),
                       ),
@@ -406,5 +394,124 @@ class ServiceDetailScreen extends StatelessWidget {
     );
   }
 
+  static Future<void> _navigateToConversation(BuildContext context, Service service) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to message'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
+      // Get current user ID from token
+      final tokenParts = token.split('.');
+      String? currentUserId;
+      if (tokenParts.length == 3) {
+        try {
+          String normalized = tokenParts[1];
+          while (normalized.length % 4 != 0) {
+            normalized += '=';
+          }
+          final decoded = base64Url.decode(normalized);
+          final payload = json.decode(utf8.decode(decoded));
+          currentUserId = payload['userId']?.toString() ?? payload['_id']?.toString();
+        } catch (e) {
+          print('Error decoding token: $e');
+        }
+      }
+
+      // Fetch all conversations
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/messages/conversations'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> conversations = json.decode(response.body);
+        
+        // Find conversation with this provider
+        Map<String, dynamic>? existingConversation;
+        for (var conv in conversations) {
+          final participants = conv['participants'] as List?;
+          if (participants != null) {
+            for (var participant in participants) {
+              final participantId = participant is Map 
+                  ? participant['_id']?.toString() 
+                  : participant.toString();
+              if (participantId == service.providerId && participantId != currentUserId) {
+                existingConversation = conv;
+                break;
+              }
+            }
+          }
+          if (existingConversation != null) break;
+        }
+
+        if (existingConversation != null) {
+          // Navigate to existing conversation
+          final conversationId = existingConversation['_id']?.toString() ?? '';
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WhatsAppChatScreen(
+                conversationId: conversationId,
+                userName: service.providerName,
+                userAvatar: service.providerName.substring(0, 1).toUpperCase(),
+                otherUserId: service.providerId,
+              ),
+            ),
+          );
+        } else {
+          // No existing conversation - show message
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('No Conversation Found'),
+              content: const Text(
+                'You need to book this service first to start messaging the provider. '
+                'A conversation will be created automatically when you make a booking.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BookingFormScreen(service: service),
+                      ),
+                    );
+                  },
+                  child: const Text('Book Service'),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        throw Exception('Failed to load conversations');
+      }
+    } catch (e) {
+      print('Error finding conversation: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 }

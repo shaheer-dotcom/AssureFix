@@ -485,19 +485,15 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     final success = await bookingProvider.createBooking(bookingData);
 
     if (success && mounted) {
-      // Create chat conversation for this booking
-      try {
-        await _createChatConversation();
-      } catch (e) {
-        print('Failed to create chat: $e');
-        // Don't fail the booking if chat creation fails
-      }
-
+      // Note: Conversation is automatically created by backend when booking is created
+      // No need to create it manually
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Service booked successfully!'),
+            content: Text('Service booked successfully! A conversation has been created for messaging.'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
           ),
         );
         // Navigate back to main screen or booking history

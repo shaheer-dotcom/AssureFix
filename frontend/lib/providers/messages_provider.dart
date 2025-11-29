@@ -125,8 +125,9 @@ class MessagesProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Use the correct endpoint for conversations (created when bookings are made)
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/chat/my-chats'),
+        Uri.parse('${ApiConfig.baseUrl}/messages/conversations'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -138,19 +139,87 @@ class MessagesProvider with ChangeNotifier {
         
         // Get current user ID from token
         final tokenParts = token.split('.');
+        String? currentUserId;
         if (tokenParts.length == 3) {
-          final payload = json.decode(
-            utf8.decode(base64Url.decode(base64Url.normalize(tokenParts[1]))),
-          );
-          final currentUserId = payload['userId'];
+          try {
+            // Decode JWT payload
+            String normalized = tokenParts[1];
+            // Add padding if needed
+            while (normalized.length % 4 != 0) {
+              normalized += '=';
+            }
+            final decoded = base64Url.decode(normalized);
+            final payload = json.decode(utf8.decode(decoded));
+            currentUserId = payload['userId']?.toString() ?? payload['_id']?.toString();
+          } catch (e) {
+            print('Error decoding token: $e');
+          }
+        }
 
-          _conversations = data
-              .map((conv) => Conversation.fromJson(conv, currentUserId))
-              .toList();
+        if (currentUserId != null) {
+          // Transform backend conversation format to frontend format
+          _conversations = data.map((conv) {
+            // Find the other participant
+            Map<String, dynamic>? otherParticipant;
+            final participants = conv['participants'] as List?;
+            if (participants != null) {
+              for (var participant in participants) {
+                final participantId = participant is Map 
+                    ? participant['_id']?.toString() 
+                    : participant.toString();
+                if (participantId != currentUserId) {
+                  otherParticipant = participant is Map 
+                      ? Map<String, dynamic>.from(participant)
+                      : {'_id': participantId};
+                  break;
+                }
+              }
+            }
+
+            // Get service name from related booking
+            String serviceName = 'Service';
+            if (conv['relatedBooking'] != null) {
+              final booking = conv['relatedBooking'];
+              if (booking is Map && booking['serviceId'] != null) {
+                final service = booking['serviceId'];
+                if (service is Map) {
+                  serviceName = service['serviceName'] ?? 'Service';
+                }
+              }
+            }
+
+            // Get last message info
+            final lastMessage = conv['lastMessage'];
+            DateTime lastMessageTime = DateTime.now();
+            
+            if (lastMessage is Map) {
+              if (lastMessage['timestamp'] != null) {
+                lastMessageTime = DateTime.parse(lastMessage['timestamp']);
+              }
+            }
+
+            return Conversation(
+              id: conv['_id']?.toString() ?? '',
+              participants: participants?.map((p) => 
+                p is Map ? p['_id']?.toString() ?? '' : p.toString()
+              ).toList() ?? [],
+              serviceId: conv['relatedBooking']?['serviceId']?['_id']?.toString() ?? 
+                        conv['relatedBooking']?['serviceId']?.toString() ?? '',
+              serviceName: serviceName,
+              messages: [], // Messages will be loaded separately
+              status: conv['isActive'] == true ? 'active' : 'inactive',
+              lastMessage: lastMessageTime,
+              otherParticipant: otherParticipant,
+            );
+          }).toList();
+          
           _conversations.sort((a, b) => b.lastMessage.compareTo(a.lastMessage));
+        } else {
+          _error = 'Could not determine user ID';
         }
       } else {
-        _error = 'Failed to load conversations';
+        _error = 'Failed to load conversations: ${response.statusCode}';
+        print('Error response: ${response.body}');
       }
     } catch (e) {
       _error = 'Error: $e';

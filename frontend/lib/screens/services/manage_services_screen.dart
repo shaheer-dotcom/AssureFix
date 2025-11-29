@@ -412,6 +412,9 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
       final success = await serviceProvider.deleteService(service.id);
       
       if (success && mounted) {
+        // Reload services from server to ensure UI is updated
+        await serviceProvider.loadUserServices();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Service deleted successfully!'),
@@ -420,8 +423,8 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to delete service'),
+          SnackBar(
+            content: Text('Failed to delete service: ${serviceProvider.error ?? "Unknown error"}'),
             backgroundColor: Colors.red,
           ),
         );

@@ -89,8 +89,12 @@ class ApiService {
       if (errorString.contains('socket') ||
           errorString.contains('connection refused') || 
           errorString.contains('failed host lookup') ||
-          errorString.contains('network')) {
-        throw NetworkException();
+          errorString.contains('network') ||
+          errorString.contains('clientexception') ||
+          errorString.contains('failed to fetch') ||
+          errorString.contains('connection') ||
+          errorString.contains('unreachable')) {
+        throw NetworkException('Cannot connect to server. Please make sure the backend is running and you are on the same network.');
       }
       throw ServerException('An unexpected error occurred: ${e.toString()}');
     }
@@ -201,8 +205,11 @@ class ApiService {
       final errorString = e.toString().toLowerCase();
       if (errorString.contains('socket') ||
           errorString.contains('connection') ||
-          errorString.contains('network')) {
-        throw NetworkException();
+          errorString.contains('network') ||
+          errorString.contains('clientexception') ||
+          errorString.contains('failed to fetch') ||
+          errorString.contains('unreachable')) {
+        throw NetworkException('Cannot connect to server. Please make sure the backend is running and you are on the same network.');
       }
       throw ServerException('File upload failed: ${e.toString()}');
     }
@@ -251,8 +258,11 @@ class ApiService {
       final errorString = e.toString().toLowerCase();
       if (errorString.contains('socket') ||
           errorString.contains('connection') ||
-          errorString.contains('network')) {
-        throw NetworkException();
+          errorString.contains('network') ||
+          errorString.contains('clientexception') ||
+          errorString.contains('failed to fetch') ||
+          errorString.contains('unreachable')) {
+        throw NetworkException('Cannot connect to server. Please make sure the backend is running and you are on the same network.');
       }
       throw ServerException('Profile picture upload failed: ${e.toString()}');
     }
@@ -301,8 +311,11 @@ class ApiService {
       final errorString = e.toString().toLowerCase();
       if (errorString.contains('socket') ||
           errorString.contains('connection') ||
-          errorString.contains('network')) {
-        throw NetworkException();
+          errorString.contains('network') ||
+          errorString.contains('clientexception') ||
+          errorString.contains('failed to fetch') ||
+          errorString.contains('unreachable')) {
+        throw NetworkException('Cannot connect to server. Please make sure the backend is running and you are on the same network.');
       }
       throw ServerException('Banner upload failed: ${e.toString()}');
     }
@@ -343,6 +356,14 @@ class ApiService {
       Uri.parse('$baseUrl/bookings/$bookingId/status'),
       headers: _headers,
       body: jsonEncode(body),
+    ));
+  }
+
+  static Future<Map<String, dynamic>> updateBooking(String bookingId, Map<String, dynamic> bookingData) async {
+    return await _executeRequest(() => http.put(
+      Uri.parse('$baseUrl/bookings/$bookingId'),
+      headers: _headers,
+      body: jsonEncode(bookingData),
     ));
   }
 

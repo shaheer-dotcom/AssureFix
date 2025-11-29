@@ -7,6 +7,7 @@ import 'privacy_settings_screen.dart';
 import 'terms_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'change_password_screen.dart';
+import 'api_config_screen.dart';
 import '../support/help_support_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -98,6 +99,36 @@ class SettingsScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (context) => const PrivacySettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Developer/API Settings
+              Card(
+                child: Column(
+                  children: [
+                    const ListTile(
+                      leading: Icon(Icons.settings),
+                      title: Text('Advanced Settings'),
+                      subtitle: Text('Developer and API configuration'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.api),
+                      title: const Text('API Configuration'),
+                      subtitle: const Text('Configure backend server URL'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ApiConfigScreen(),
                           ),
                         );
                       },

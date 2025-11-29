@@ -150,6 +150,27 @@ app.get('/', (req, res) => {
   });
 });
 
+// Config endpoint - provides API URL for frontend
+app.get('/api/config', (req, res) => {
+  // Get API URL from environment or construct from request
+  // In production, prefer HTTPS if available
+  let protocol = req.protocol;
+  if (process.env.NODE_ENV === 'production') {
+    // Check for X-Forwarded-Proto header (common in hosting platforms)
+    protocol = req.get('X-Forwarded-Proto') || req.protocol || 'https';
+  }
+  
+  const apiUrl = process.env.API_URL || 
+    `${protocol}://${req.get('host')}/api`;
+  
+  res.json({
+    apiUrl: apiUrl,
+    baseUrl: apiUrl.replace('/api', ''),
+    port: process.env.PORT || 5000,
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Routes
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
@@ -247,11 +268,23 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // Bind to 0.0.0.0 to accept connections from all network interfaces
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT} in ${NODE_ENV} mode`);
-  console.log(`📱 Local access: http://localhost:${PORT}`);
-  console.log(`📱 Network access: http://192.168.100.7:${PORT}`);
-  console.log(`📱 Mobile API endpoint: http://192.168.100.7:${PORT}/api`);
+  
   if (NODE_ENV === 'production') {
-    console.log('✅ Production mode enabled');
+    const apiUrl = process.env.API_URL || 'https://your-domain.com/api';
+    console.log(`✅ Production mode enabled`);
+    console.log(`🌐 API URL: ${apiUrl}`);
+    console.log(`📱 Backend ready at: ${apiUrl.replace('/api', '')}`);
+  } else {
+    console.log(`📱 Local access: http://localhost:${PORT}`);
+    console.log(`📱 Network access: http://192.168.100.7:${PORT}`);
+    console.log(`📱 Mobile API endpoint: http://192.168.100.7:${PORT}/api`);
+    console.log('\n⚠️  Make sure Windows Firewall allows connections on port', PORT);
   }
-  console.log('\n⚠️  Make sure Windows Firewall allows connections on port', PORT);
+  
+  // Display MongoDB connection status
+  if (mongoose.connection.readyState === 1) {
+    console.log('✅ MongoDB connected');
+  } else {
+    console.log('⏳ MongoDB connecting...');
+  }
 });

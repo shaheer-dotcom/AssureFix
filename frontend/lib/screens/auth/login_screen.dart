@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../settings/api_config_screen.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -65,9 +66,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         child: SafeArea(
           child: Consumer<AuthProvider>(
             builder: (context, authProvider, child) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: FadeTransition(
+              return Stack(
+                children: [
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: FadeTransition(
                   opacity: _fadeAnimation,
                   child: SlideTransition(
                     position: _slideAnimation,
@@ -408,6 +411,25 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     ),
                   ),
                 ),
+              ),
+                  // Settings/API Config button in top right
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      icon: const Icon(Icons.settings, color: Color(0xFF1565C0)),
+                      tooltip: 'API Configuration',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ApiConfigScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           ),

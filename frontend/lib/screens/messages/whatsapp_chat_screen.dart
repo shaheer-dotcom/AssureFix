@@ -7,8 +7,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../config/api_config.dart';
-import '../../services/api_service.dart';
 import '../profile/user_profile_view_screen.dart';
 
 class WhatsAppChatScreen extends StatefulWidget {
@@ -33,16 +34,15 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
+  final AudioRecorder _audioRecorder = AudioRecorder();
   List<Map<String, dynamic>> _messages = [];
   bool _isLoading = true;
   bool _isRecording = false;
   bool _isSendingImage = false;
   bool _isSendingLocation = false;
+  bool _isSendingVoice = false;
+  DateTime? _recordingStartTime;
   String? _currentUserId;
-
-  String get _baseUrl {
-    return ApiConfig.baseUrlWithoutApi;
-  }
 
   @override
   void initState() {
@@ -65,8 +65,9 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
           _currentUserId = payload['userId'];
         }
 
+        // Use the messages endpoint to get conversation and messages
         final response = await http.get(
-          Uri.parse('$_baseUrl/api/chat/${widget.conversationId}'),
+          Uri.parse('${ApiConfig.baseUrl}/messages/${widget.conversationId}'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -76,6 +77,7 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           setState(() {
+            // Backend returns { conversation, messages, page, limit }
             _messages = List<Map<String, dynamic>>.from(data['messages'] ?? []);
             _isLoading = false;
           });
@@ -95,15 +97,28 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
 
   Future<void> _markAsRead(String token) async {
     try {
-      await http.patch(
-        Uri.parse('$_baseUrl/api/chat/${widget.conversationId}/read'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // Mark all unread messages in this conversation as read
+      // Backend endpoint marks individual messages, so we'll mark each unread message
+      for (var message in _messages) {
+        if (message['senderId'] != _currentUserId && 
+            message['isRead'] != true && 
+            message['_id'] != null) {
+          try {
+            await http.patch(
+              Uri.parse('${ApiConfig.baseUrl}/messages/${message['_id']}/read'),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+            );
+          } catch (e) {
+            // Continue marking other messages even if one fails
+            print('Error marking message ${message['_id']} as read: $e');
+          }
+        }
+      }
     } catch (e) {
-      print('Error marking as read: $e');
+      print('Error marking messages as read: $e');
     }
   }
 
@@ -118,15 +133,17 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
       final token = prefs.getString('auth_token');
 
       if (token != null) {
+        // Use the messages endpoint to send messages
         final response = await http.post(
-          Uri.parse('$_baseUrl/api/chat/${widget.conversationId}/messages'),
+          Uri.parse('${ApiConfig.baseUrl}/messages'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
           },
           body: json.encode({
+            'conversationId': widget.conversationId,
             'messageType': 'text',
-            'content': {'text': messageText},
+            'content': messageText,
           }),
         );
 
@@ -502,11 +519,8 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
       if (image != null) {
         setState(() => _isSendingImage = true);
         
-        // Upload image
-        final imagePath = await ApiService.uploadProfilePicture(image);
-        
-        // Send message with image
-        await _sendMessageWithContent('image', {'imageUrl': imagePath});
+        // Upload image using messages upload-media endpoint
+        await _uploadAndSendMedia(image, 'image');
         
         setState(() => _isSendingImage = false);
       }
@@ -532,11 +546,8 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
       if (image != null) {
         setState(() => _isSendingImage = true);
         
-        // Upload image
-        final imagePath = await ApiService.uploadProfilePicture(image);
-        
-        // Send message with image
-        await _sendMessageWithContent('image', {'imageUrl': imagePath});
+        // Upload image using messages upload-media endpoint
+        await _uploadAndSendMedia(image, 'image');
         
         setState(() => _isSendingImage = false);
       }
@@ -547,6 +558,53 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
           SnackBar(content: Text('Failed to send photo: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _uploadAndSendMedia(XFile file, String messageType) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token == null) {
+        throw Exception('Not authenticated');
+      }
+
+      // Create multipart request
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}/messages/upload-media'),
+      );
+      
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['conversationId'] = widget.conversationId;
+      request.fields['messageType'] = messageType;
+      
+      // Add file
+      request.files.add(await http.MultipartFile.fromPath('media', file.path));
+      
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 201) {
+        // Reload messages
+        await _loadMessages();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Media sent successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to upload media');
+      }
+    } catch (e) {
+      print('Error uploading media: $e');
+      rethrow;
     }
   }
 
@@ -605,24 +663,35 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
       final token = prefs.getString('auth_token');
 
       if (token != null) {
+        // Use the messages endpoint (requires conversation ID from booking)
         final response = await http.post(
-          Uri.parse('$_baseUrl/api/chat/${widget.conversationId}/messages'),
+          Uri.parse('${ApiConfig.baseUrl}/messages'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
           },
           body: json.encode({
+            'conversationId': widget.conversationId,
             'messageType': messageType,
-            'content': content,
+            'content': messageType == 'text' ? content['text'] ?? content : content,
+            'location': messageType == 'location' ? content : null,
           }),
         );
 
-        if (response.statusCode == 200) {
+        if (response.statusCode == 201 || response.statusCode == 200) {
           await _loadMessages();
+        } else {
+          final errorData = json.decode(response.body);
+          throw Exception(errorData['message'] ?? 'Failed to send message');
         }
       }
     } catch (e) {
       print('Error sending message: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send: $e')),
+        );
+      }
     }
   }
 
@@ -665,15 +734,79 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
   }
 
   Future<void> _startRecording() async {
-    setState(() {
-      _isRecording = true;
-    });
+    try {
+      // Request microphone permission
+      if (await _audioRecorder.hasPermission()) {
+        final String? outputPath = await _getRecordingPath();
+        if (outputPath != null) {
+          await _audioRecorder.start(
+            const RecordConfig(),
+            path: outputPath,
+          );
+          setState(() {
+            _isRecording = true;
+            _recordingStartTime = DateTime.now();
+          });
+        } else {
+          throw Exception('Could not get recording path');
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Microphone permission is required for voice messages'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error starting recording: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to start recording: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _stopRecording() async {
-    setState(() {
-      _isRecording = false;
-    });
+    try {
+      final path = await _audioRecorder.stop();
+      setState(() {
+        _isRecording = false;
+      });
+
+      if (path != null) {
+        // Upload and send the voice note
+        setState(() => _isSendingVoice = true);
+        final file = XFile(path);
+        await _uploadAndSendMedia(file, 'audio');
+        setState(() => _isSendingVoice = false);
+      }
+    } catch (e) {
+      setState(() {
+        _isRecording = false;
+        _isSendingVoice = false;
+      });
+      print('Error stopping recording: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send voice message: $e')),
+        );
+      }
+    }
+  }
+
+  Future<String?> _getRecordingPath() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      return '${directory.path}/voice_$timestamp.m4a';
+    } catch (e) {
+      print('Error getting recording path: $e');
+      return null;
+    }
   }
 
   Widget _buildMessageInput() {
@@ -753,16 +886,19 @@ class _WhatsAppChatScreenState extends State<WhatsAppChatScreen> {
                         icon: const Icon(Icons.send, color: Colors.white, size: 20),
                         onPressed: _sendMessage,
                       )
-                    : IconButton(
-                        icon: const Icon(Icons.mic, color: Colors.white, size: 20),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Type a message to send'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
+                    : GestureDetector(
+                        onLongPress: _startRecording,
+                        child: IconButton(
+                          icon: const Icon(Icons.mic, color: Colors.white, size: 20),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Hold to record voice message'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                        ),
                       ),
           ),
         ],

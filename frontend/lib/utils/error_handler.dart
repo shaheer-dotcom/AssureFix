@@ -48,7 +48,7 @@ class ErrorHandler {
     } else if (error is AuthException) {
       return error.message;
     } else if (error is SocketException) {
-      return 'Cannot connect to server. Please make sure the backend is running.';
+      return 'Cannot connect to server. Please check your API configuration in Settings (⚙️ icon) and make sure the backend is running.';
     } else if (error is HttpException) {
       return 'Server error. Please try again later.';
     } else if (error is FormatException) {
@@ -59,8 +59,11 @@ class ErrorHandler {
       // Check for connection-related errors
       if (errorString.contains('Failed to fetch') || 
           errorString.contains('Connection refused') ||
-          errorString.contains('Failed host lookup')) {
-        return 'Cannot connect to server. Please make sure the backend is running.';
+          errorString.contains('Failed host lookup') ||
+          errorString.contains('ClientException') ||
+          errorString.contains('connection') ||
+          errorString.contains('unreachable')) {
+        return 'Cannot connect to server. Tap the ⚙️ icon to configure API settings. Make sure the backend is running and you are on the same network.';
       }
       
       // Remove "Exception: " prefix if present
@@ -74,8 +77,11 @@ class ErrorHandler {
       // Check for connection-related errors in any error type
       if (errorString.contains('Failed to fetch') || 
           errorString.contains('Connection refused') ||
-          errorString.contains('Failed host lookup')) {
-        return 'Cannot connect to server. Please make sure the backend is running.';
+          errorString.contains('Failed host lookup') ||
+          errorString.contains('ClientException') ||
+          errorString.contains('connection') ||
+          errorString.contains('unreachable')) {
+        return 'Cannot connect to server. Tap the ⚙️ icon to configure API settings. Make sure the backend is running and you are on the same network.';
       }
       
       return errorString;

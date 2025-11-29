@@ -126,15 +126,19 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           textAlign: TextAlign.center,
                           keyboardType: TextInputType.number,
                           maxLength: 1,
+                          obscureText: false,
+                          obscuringCharacter: '•',
                           style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: Colors.black87,
+                            letterSpacing: 0,
                           ),
                           decoration: InputDecoration(
                             counterText: '',
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Colors.grey.shade50,
+                            contentPadding: EdgeInsets.zero,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -153,6 +157,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           ),
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(1),
                           ],
                           onTap: () {
                             // Clear error when user taps on any OTP field

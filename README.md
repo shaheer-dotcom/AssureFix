@@ -126,6 +126,30 @@ flutter pub get
 flutter run -d chrome --web-port=8082
 ```
 
+## 🚀 Deployment (Free Hosting)
+
+Want to deploy your backend with a static URL for free? Check out our deployment guides:
+
+- **[QUICK_DEPLOY.md](QUICK_DEPLOY.md)** - 5-minute quick start guide
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete deployment guide with multiple hosting options
+
+**Recommended Free Hosting:**
+- **Render.com** - Free tier with static URL (`your-app.onrender.com`)
+- **Railway.app** - Free tier with $5 credit/month
+- **Fly.io** - Free tier with 3 shared VMs
+
+All guides include MongoDB Atlas setup and frontend configuration.
+
+## 📱 Building APK Files
+
+To build Android APK files, you need Android SDK installed:
+
+- **[ANDROID_SDK_SETUP.md](ANDROID_SDK_SETUP.md)** - Complete Android SDK installation guide
+- **Quick Setup:** Run `setup_android_sdk.bat` to check your setup
+- **Build APK:** Run `build_apk.bat` (will check for Android SDK automatically)
+
+**Quick Fix:** Install [Android Studio](https://developer.android.com/studio) - it includes everything you need!
+
 ### Environment Variables
 Create a `.env` file in the backend directory:
 ```env
