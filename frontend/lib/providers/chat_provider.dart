@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../config/api_config.dart';
 
 class ChatProvider with ChangeNotifier {
   io.Socket? _socket;
@@ -10,7 +11,9 @@ class ChatProvider with ChangeNotifier {
   bool get isConnected => _isConnected;
 
   void initSocket(String token) {
-    _socket = io.io('http://localhost:5000', <String, dynamic>{
+    // Use ApiConfig to get the correct base URL for APK
+    final baseUrl = ApiConfig.baseUrlWithoutApi;
+    _socket = io.io(baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
       'extraHeaders': {'Authorization': 'Bearer $token'}

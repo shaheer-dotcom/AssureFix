@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../config/api_config.dart';
 import 'admin_dashboard_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
@@ -24,8 +24,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   }
 
   String get _baseUrl {
-    // Use localhost for web, 10.0.2.2 for Android emulator
-    return kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000';
+    return ApiConfig.baseUrlWithoutApi;
   }
 
   Future<void> _adminLogin() async {
@@ -123,7 +122,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Title
                   const Text(
                     'Admin Panel',
@@ -134,7 +133,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  
+
                   const Text(
                     'Access administrative features',
                     style: TextStyle(
@@ -143,7 +142,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   // Email Field
                   SizedBox(
                     width: 300,
@@ -167,7 +166,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Error Message
                   if (_error != null)
                     Container(
@@ -192,7 +191,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         ],
                       ),
                     ),
-                  
+
                   // Login Button
                   SizedBox(
                     width: 300,
@@ -213,7 +212,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
                           : const Text(
@@ -226,7 +226,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Info
                   Container(
                     width: 300,

@@ -225,13 +225,13 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                   color: Colors.amber,
                 ),
                 const SizedBox(width: 4),
-                const Text(
-                  '0.0',
-                  style: TextStyle(fontSize: 12),
+                Text(
+                  service.providerRating.toStringAsFixed(1),
+                  style: const TextStyle(fontSize: 12),
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '(0 bookings)',
+                  '(${service.totalBookings} ${service.totalBookings == 1 ? 'booking' : 'bookings'})',
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.grey.shade600,
@@ -364,9 +364,11 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
 
   Future<void> _deleteServiceWithConfirmation(Service service) async {
     final confirmed = await ConfirmationDialog.deleteService(context);
+    
     if (confirmed == true) {
       await _deleteService(service);
     }
+    // User cancelled - no action needed
   }
 
 
@@ -374,31 +376,35 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
   void _toggleServiceStatus(Service service) async {
     try {
       final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
-      print('Toggling service status for: ${service.id}');
       final success = await serviceProvider.toggleServiceStatus(service.id);
       
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Service ${service.isActive ? 'deactivated' : 'activated'} successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update service status'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Service ${service.isActive ? 'deactivated' : 'activated'} successfully!'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else {
+          final errorMessage = serviceProvider.error ?? 'Failed to update service status';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
       }
     } catch (e) {
-      print('Error toggling service status: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text('Error: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -406,33 +412,65 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
   }
 
   Future<void> _deleteService(Service service) async {
+    final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
+    
     try {
-      final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
-      print('Deleting service: ${service.id}');
-      final success = await serviceProvider.deleteService(service.id);
+      // Debug: Log service ID
+      debugPrint('Attempting to delete service with ID: ${service.id}');
       
-      if (success && mounted) {
+      // Show loading indicator
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Service deleted successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to delete service'),
-            backgroundColor: Colors.red,
+            content: Text('Deleting service...'),
+            duration: Duration(seconds: 1),
           ),
         );
       }
+      
+      final success = await serviceProvider.deleteService(service.id);
+      
+      debugPrint('Delete service result: $success');
+      
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Service deleted successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          final errorMessage = serviceProvider.error ?? 'Failed to delete service';
+          debugPrint('Delete failed with error: $errorMessage');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Delete failed: $errorMessage'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: () => _deleteService(service),
+              ),
+            ),
+          );
+        }
+      }
     } catch (e) {
-      print('Error deleting service: $e');
+      debugPrint('Exception during delete: ${e.toString()}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text('Error deleting service: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () => _deleteService(service),
+            ),
           ),
         );
       }

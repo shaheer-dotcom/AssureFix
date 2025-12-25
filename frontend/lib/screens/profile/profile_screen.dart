@@ -5,7 +5,8 @@ import '../../providers/auth_provider.dart';
 import '../../config/api_config.dart';
 import 'edit_profile_screen.dart';
 import 'ratings_view_screen.dart';
-import '../admin/admin_login_screen.dart';
+
+import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -235,6 +236,7 @@ class ProfileScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 12),
+                        // Show only relevant rating based on user type
                         if (user.profile?.userType == 'service_provider') ...[
                           Row(
                             children: [
@@ -259,7 +261,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'As Service Provider',
+                            'Service Provider Rating',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade600,
@@ -289,7 +291,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'As Customer',
+                            'Customer Rating',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade600,
@@ -350,44 +352,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 16),
 
-                // Admin Panel Access (Hidden button - tap 5 times to reveal)
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AdminLoginScreen(),
-                      ),
-                    );
-                  },
-                  child: const Card(
-                    color: Color(0xFF2E7D32),
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.admin_panel_settings,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                          SizedBox(width: 12),
-                          Text(
-                            'Admin Panel Access',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           );
@@ -430,9 +395,16 @@ class ProfileScreen extends StatelessWidget {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                authProvider.logout();
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                await authProvider.logout();
+                // Navigate to login screen and remove all previous routes
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
               },
               child: const Text('Logout', style: TextStyle(color: Colors.red)),
             ),

@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['booking', 'message', 'admin', 'update'],
+    enum: ['booking', 'message', 'admin', 'update', 'booking_completion_confirmation'],
     required: true
   },
   title: {
@@ -40,6 +40,20 @@ const notificationSchema = new mongoose.Schema({
   actionUrl: {
     type: String,
     default: null
+  },
+  // Additional data for specific notification types
+  bookingData: {
+    bookingId: String,
+    serviceName: String,
+    customerName: String,
+    providerName: String,
+    customerAddress: String,
+    customerPhone: String,
+    reservationDate: Date,
+    hoursBooked: Number,
+    totalAmount: Number,
+    status: String,
+    initiatedBy: String
   }
 }, {
   timestamps: true

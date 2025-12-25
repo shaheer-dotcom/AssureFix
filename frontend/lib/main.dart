@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'providers/auth_provider.dart';
 import 'providers/service_provider.dart';
 import 'providers/booking_provider.dart';
@@ -26,12 +27,20 @@ import 'screens/profile/report_block_management_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Initialize Agora engine
+  await _initializeAgora();
+  
   // Add error handling for uncaught errors
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
   };
   
   runApp(const ServiceHubApp());
+}
+
+Future<void> _initializeAgora() async {
+  // Request microphone permission for voice calls
+  await [Permission.microphone].request();
 }
 
 class ServiceHubApp extends StatelessWidget {
@@ -90,7 +99,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     _checkAuthStatus();
   }
 
-  _checkAuthStatus() async {
+  Future<void> _checkAuthStatus() async {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
@@ -103,18 +112,24 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
+        print('AuthWrapper rebuild - isLoading: ${authProvider.isLoading}, isAuthenticated: ${authProvider.isAuthenticated}, hasProfile: ${authProvider.hasProfile}');
+        
         if (authProvider.isLoading) {
+          print('AuthWrapper: Showing loading screen');
           return const AnimatedLoadingScreen();
         }
 
         if (!authProvider.isAuthenticated) {
+          print('AuthWrapper: Showing login screen');
           return const LoginScreen();
         }
 
         if (!authProvider.hasProfile) {
+          print('AuthWrapper: Showing role selection screen');
           return const RoleSelectionScreen();
         }
 
+        print('AuthWrapper: Showing main navigation');
         return const MainNavigation();
       },
     );

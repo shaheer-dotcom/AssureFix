@@ -30,9 +30,16 @@ const bookingSchema = new mongoose.Schema({
       required: true
     }
   },
+  bookingType: {
+    type: String,
+    enum: ['immediate', 'reservation'],
+    default: 'reservation',
+    required: true
+  },
   reservationDate: {
     type: Date,
-    required: true
+    required: false,
+    default: null
   },
   status: {
     type: String,
@@ -56,10 +63,51 @@ const bookingSchema = new mongoose.Schema({
   canCancel: {
     type: Boolean,
     default: true
+  },
+  conversationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Chat'
+  },
+  notificationSent: {
+    type: Boolean,
+    default: false
+  },
+  acceptedAt: {
+    type: Date
+  },
+  // Completion confirmation tracking
+  completionInitiatedBy: {
+    type: String,
+    enum: ['customer', 'provider']
+  },
+  completionInitiatedAt: {
+    type: Date
+  },
+  completionConfirmedBy: {
+    type: String,
+    enum: ['customer', 'provider']
+  },
+  completionConfirmedAt: {
+    type: Date
+  },
+  // Rating tracking
+  customerRated: {
+    type: Boolean,
+    default: false
+  },
+  providerRated: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
 });
+
+// Add indexes for performance optimization
+bookingSchema.index({ conversationId: 1 });
+bookingSchema.index({ customerId: 1, providerId: 1 });
+bookingSchema.index({ status: 1 });
+bookingSchema.index({ reservationDate: 1 });
 
 // Middleware to check if booking can be cancelled (3 hours before reservation)
 bookingSchema.pre('save', function (next) {

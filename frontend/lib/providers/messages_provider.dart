@@ -10,6 +10,8 @@ class Message {
   final Map<String, dynamic> content;
   final DateTime timestamp;
   final bool isRead;
+  final DateTime? deliveredAt;
+  final DateTime? readAt;
 
   Message({
     required this.id,
@@ -18,6 +20,8 @@ class Message {
     required this.content,
     required this.timestamp,
     required this.isRead,
+    this.deliveredAt,
+    this.readAt,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
@@ -28,6 +32,12 @@ class Message {
       content: json['content'] ?? {},
       timestamp: DateTime.parse(json['timestamp']),
       isRead: json['isRead'] ?? false,
+      deliveredAt: json['deliveredAt'] != null 
+          ? DateTime.parse(json['deliveredAt']) 
+          : null,
+      readAt: json['readAt'] != null 
+          ? DateTime.parse(json['readAt']) 
+          : null,
     );
   }
 }
@@ -120,6 +130,7 @@ class MessagesProvider with ChangeNotifier {
   }
 
   Future<void> fetchConversations(String token) async {
+    // Always refresh conversations data
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -144,22 +155,29 @@ class MessagesProvider with ChangeNotifier {
           );
           final currentUserId = payload['userId'];
 
-          _conversations = data
+          final newConversations = data
               .map((conv) => Conversation.fromJson(conv, currentUserId))
               .toList();
-          _conversations.sort((a, b) => b.lastMessage.compareTo(a.lastMessage));
+          newConversations.sort((a, b) => b.lastMessage.compareTo(a.lastMessage));
+          
+          // Always update conversations to ensure fresh data
+          _conversations = newConversations;
+          _isLoading = false;
+          notifyListeners();
         }
       } else {
         _error = 'Failed to load conversations';
+        _isLoading = false;
+        notifyListeners();
       }
     } catch (e) {
       _error = 'Error: $e';
       print('Error fetching conversations: $e');
-    } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
+
 
   Future<Conversation?> getConversation(String token, String chatId) async {
     try {
@@ -231,9 +249,35 @@ class MessagesProvider with ChangeNotifier {
         },
       );
 
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        // Refresh conversations to update UI with new status
+        await fetchConversations(token);
+        return true;
+      }
+      return false;
     } catch (e) {
       print('Error marking as read: $e');
+      return false;
+    }
+  }
+
+  Future<bool> markAsDelivered(String token, String chatId) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/api/chat/$chatId/delivered'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // Optionally refresh conversations to update UI
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error marking as delivered: $e');
       return false;
     }
   }

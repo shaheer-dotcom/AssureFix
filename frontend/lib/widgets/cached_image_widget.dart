@@ -37,7 +37,7 @@ class CachedImageWidget extends StatelessWidget {
     // Build full image URL
     final fullImageUrl = imageUrl!.startsWith('http')
         ? imageUrl!
-        : '${ApiConfig.apiUrl}/$imageUrl';
+        : '${ApiConfig.baseUrlWithoutApi}$imageUrl';
 
     Widget imageWidget = CachedNetworkImage(
       imageUrl: fullImageUrl,
@@ -136,7 +136,7 @@ class CachedImageWidget extends StatelessWidget {
       child: Icon(
         Icons.image,
         size: 48,
-        color: Colors.white.withOpacity(0.7),
+        color: Colors.white.withValues(alpha: 0.7),
       ),
     );
   }

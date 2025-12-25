@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "agora-access-token": "^2.0.4",
+    "axios": "^1.12.2"
+  }
+}

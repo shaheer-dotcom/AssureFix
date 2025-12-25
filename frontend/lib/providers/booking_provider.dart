@@ -57,12 +57,30 @@ class BookingProvider with ChangeNotifier {
     setError(null);
     
     try {
-      // Call API to update booking status to cancelled
-      await ApiService.updateBookingStatus(
-        bookingId, 
-        'cancelled',
+      // Call API to cancel booking
+      await ApiService.cancelBooking(
+        bookingId,
         cancellationReason: cancellationReason ?? 'Cancelled by user',
       );
+      
+      // Reload bookings to get updated data from server
+      await loadUserBookings();
+      
+      setLoading(false);
+      return true;
+    } catch (e) {
+      setError(e.toString());
+      setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> updateBooking(String bookingId, Map<String, dynamic> bookingData) async {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      await ApiService.updateBooking(bookingId, bookingData);
       
       // Reload bookings to get updated data from server
       await loadUserBookings();

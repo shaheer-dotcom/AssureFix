@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/constants.dart';
 import '../../utils/token_manager.dart';
 import 'enhanced_chat_screen.dart';
@@ -86,11 +87,16 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.message_outlined, size: 64, color: Colors.grey),
+                          Icon(Icons.message_outlined,
+                              size: 64, color: Colors.grey),
                           SizedBox(height: 16),
-                          Text('No Messages Yet', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          Text('No Messages Yet',
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold)),
                           SizedBox(height: 8),
-                          Text('Messages will appear here when you book services', style: TextStyle(color: Colors.grey)),
+                          Text(
+                              'Messages will appear here when you book services',
+                              style: TextStyle(color: Colors.grey)),
                         ],
                       ),
                     )
@@ -113,20 +119,62 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       (p) => p['_id'] != conversation['currentUserId'],
       orElse: () => participants[0],
     );
-    
+
     final lastMessage = conversation['lastMessage'];
     final unreadCount = conversation['unreadCount'] ?? 0;
-    final serviceName = conversation['relatedBooking']?['serviceId']?['serviceName'] ?? 'Service';
+    final serviceName = conversation['relatedBooking']?['serviceId']
+            ?['serviceName'] ??
+        'Service';
 
     return ListTile(
-      leading: CircleAvatar(
-        backgroundImage: otherUser['profile']?['profilePicture'] != null
-            ? NetworkImage('${Constants.apiUrl}/${otherUser['profile']['profilePicture']}')
-            : null,
-        child: otherUser['profile']?['profilePicture'] == null
-            ? Text(otherUser['profile']?['name']?[0] ?? '?')
-            : null,
-      ),
+      leading: otherUser['profile']?['profilePicture'] != null &&
+              otherUser['profile']['profilePicture'].toString().isNotEmpty
+          ? CircleAvatar(
+              radius: 24,
+              backgroundColor: const Color(0xFF2E7D32),
+              child: ClipOval(
+                child: CachedNetworkImage(
+                  imageUrl:
+                      '${Constants.apiUrl}/${otherUser['profile']['profilePicture']}',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                  // Cache profile pictures efficiently
+                  memCacheWidth: 96, // 2x for retina displays
+                  memCacheHeight: 96,
+                  maxWidthDiskCache: 150,
+                  maxHeightDiskCache: 150,
+                  placeholder: (context, url) => const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Text(
+                    otherUser['profile']?['name']?[0]?.toUpperCase() ?? '?',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : CircleAvatar(
+              radius: 24,
+              backgroundColor: const Color(0xFF2E7D32),
+              child: Text(
+                otherUser['profile']?['name']?[0]?.toUpperCase() ?? '?',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+            ),
       title: Text(
         otherUser['profile']?['name'] ?? 'Unknown',
         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -145,7 +193,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: unreadCount > 0 ? Colors.black87 : Colors.grey[600],
-                fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
+                fontWeight:
+                    unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
               ),
             ),
         ],
@@ -169,7 +218,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               ),
               child: Text(
                 unreadCount.toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold),
               ),
             ),
         ],

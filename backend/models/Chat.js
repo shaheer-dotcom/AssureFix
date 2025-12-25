@@ -8,12 +8,13 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['text', 'voice', 'location', 'booking_request'],
+    enum: ['text', 'voice', 'image', 'location', 'booking_request'],
     default: 'text'
   },
   content: {
     text: String,
     voiceUrl: String,
+    imageUrl: String,
     location: {
       latitude: Number,
       longitude: Number,
@@ -33,6 +34,12 @@ const messageSchema = new mongoose.Schema({
   isRead: {
     type: Boolean,
     default: false
+  },
+  deliveredAt: {
+    type: Date
+  },
+  readAt: {
+    type: Date
   }
 });
 
@@ -47,6 +54,10 @@ const chatSchema = new mongoose.Schema({
     ref: 'Service',
     required: true
   },
+  bookingId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Booking'
+  },
   messages: [messageSchema],
   status: {
     type: String,
@@ -56,9 +67,22 @@ const chatSchema = new mongoose.Schema({
   lastMessage: {
     type: Date,
     default: Date.now
+  },
+  closedAt: {
+    type: Date
+  },
+  closedReason: {
+    type: String,
+    enum: ['completed', 'cancelled']
   }
 }, {
   timestamps: true
 });
+
+// Add indexes for performance optimization
+chatSchema.index({ bookingId: 1 });
+chatSchema.index({ participants: 1 });
+chatSchema.index({ status: 1 });
+chatSchema.index({ lastMessage: -1 });
 
 module.exports = mongoose.model('Chat', chatSchema);

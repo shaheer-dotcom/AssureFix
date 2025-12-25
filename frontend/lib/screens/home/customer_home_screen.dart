@@ -5,6 +5,7 @@ import '../../providers/booking_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../models/booking.dart';
 import '../../services/api_service.dart';
+import '../../widgets/cached_image_widget.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -16,7 +17,7 @@ class CustomerHomeScreen extends StatefulWidget {
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   final Map<String, String> _serviceNames = {};
   final Map<String, String> _providerNames = {};
-  
+
   @override
   void initState() {
     super.initState();
@@ -27,29 +28,36 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Future<void> _loadActiveBookings() async {
-    await Provider.of<BookingProvider>(context, listen: false).loadUserBookings();
+    await Provider.of<BookingProvider>(context, listen: false)
+        .loadUserBookings();
     await _loadBookingDetails();
   }
 
   Future<void> _loadNotificationCount() async {
-    await Provider.of<NotificationProvider>(context, listen: false).loadUnreadCount();
+    await Provider.of<NotificationProvider>(context, listen: false)
+        .loadUnreadCount();
   }
 
   Future<void> _loadBookingDetails() async {
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    final bookingProvider =
+        Provider.of<BookingProvider>(context, listen: false);
     final activeBookings = bookingProvider.bookings
-        .where((booking) => 
-            booking.status == 'pending' || booking.status == 'active')
+        .where((booking) =>
+            booking.status == 'pending' || 
+            booking.status == 'confirmed' || 
+            booking.status == 'in_progress')
         .toList();
-    
+
     for (var booking in activeBookings) {
       // Load service name
       if (!_serviceNames.containsKey(booking.serviceId)) {
         try {
-          final serviceData = await ApiService.getServiceById(booking.serviceId);
+          final serviceData =
+              await ApiService.getServiceById(booking.serviceId);
           if (mounted) {
             setState(() {
-              _serviceNames[booking.serviceId] = serviceData['name'] ?? 'Unknown Service';
+              _serviceNames[booking.serviceId] =
+                  serviceData['name'] ?? 'Unknown Service';
             });
           }
         } catch (e) {
@@ -60,14 +68,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           }
         }
       }
-      
+
       // Load provider name
       if (!_providerNames.containsKey(booking.providerId)) {
         try {
           final userData = await ApiService.getCurrentUser();
           if (mounted) {
             setState(() {
-              _providerNames[booking.providerId] = userData['profile']?['name'] ?? 'Unknown Provider';
+              _providerNames[booking.providerId] =
+                  userData['profile']?['name'] ?? 'Unknown Provider';
             });
           }
         } catch (e) {
@@ -146,7 +155,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       body: RefreshIndicator(
         onRefresh: _loadActiveBookings,
         child: Consumer3<AuthProvider, BookingProvider, NotificationProvider>(
-          builder: (context, authProvider, bookingProvider, notificationProvider, child) {
+          builder: (context, authProvider, bookingProvider,
+              notificationProvider, child) {
             final user = authProvider.user;
             final profile = user?.profile;
 
@@ -160,31 +170,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   Row(
                     children: [
                       // Profile Picture
-                      user?.profile?.profilePicture != null
-                          ? CircleAvatar(
-                              radius: 30,
-                              backgroundImage: NetworkImage(
-                                'http://localhost:5000${user!.profile!.profilePicture}',
-                              ),
-                              backgroundColor: Theme.of(context).primaryColor,
-                              onBackgroundImageError: (exception, stackTrace) {
-                                print('Error loading profile picture: $exception');
-                              },
-                            )
-                          : CircleAvatar(
-                              radius: 30,
-                              backgroundColor: Theme.of(context).primaryColor,
-                              child: Text(
-                                (profile?.name.isNotEmpty == true)
-                                    ? profile!.name.substring(0, 1).toUpperCase()
-                                    : 'U',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
+                      AvatarWidget(
+                        imageUrl: user?.profile?.profilePicture,
+                        name: profile?.name,
+                        size: 60,
+                        backgroundColor: Theme.of(context).primaryColor,
+                      ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
@@ -283,17 +274,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color, color.withOpacity(0.8)],
+            colors: [color, color.withValues(alpha: 0.8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
               spreadRadius: 1,
               blurRadius: 8,
               offset: const Offset(0, 4),
@@ -301,11 +293,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ],
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.max,
           children: [
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -323,6 +316,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const Icon(
@@ -389,10 +384,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       );
     }
 
-    // Filter active bookings (pending or active status)
+    // Filter active bookings (pending, confirmed, or in_progress status)
     final activeBookings = bookingProvider.bookings
-        .where((booking) => 
-            booking.status == 'pending' || booking.status == 'active')
+        .where((booking) =>
+            booking.status == 'pending' || 
+            booking.status == 'confirmed' || 
+            booking.status == 'in_progress')
         .toList();
 
     if (activeBookings.isEmpty) {
@@ -466,8 +463,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: booking.status == 'pending' 
-                      ? Colors.orange.shade100 
+                  color: booking.status == 'pending'
+                      ? Colors.orange.shade100
                       : Colors.green.shade100,
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -476,8 +473,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: booking.status == 'pending' 
-                        ? Colors.orange.shade700 
+                    color: booking.status == 'pending'
+                        ? Colors.orange.shade700
                         : Colors.green.shade700,
                   ),
                 ),
@@ -502,9 +499,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.person_outline, 'Provider: ${_providerNames[booking.providerId] ?? 'Loading...'}'),
+          _buildInfoRow(Icons.person_outline,
+              'Provider: ${_providerNames[booking.providerId] ?? 'Loading...'}'),
           const SizedBox(height: 4),
-          _buildInfoRow(Icons.location_on_outlined, booking.customerDetails.exactAddress),
+          _buildInfoRow(
+              Icons.location_on_outlined, booking.customerDetails.exactAddress),
           const SizedBox(height: 4),
           _buildInfoRow(
             Icons.calendar_today_outlined,
@@ -565,7 +564,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   void _showCompletionDialog(Booking booking) {
     int rating = 0;
     final reviewController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -666,21 +665,24 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       // Show loading
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Submitting rating...')),
+          const SnackBar(
+            content: Text('Submitting rating...'),
+            duration: Duration(seconds: 2),
+          ),
         );
       }
 
       // Submit rating
       await ApiService.createRating({
-        'ratedUser': booking.providerId,
+        'ratedUserId': booking.providerId,
         'ratingType': 'service_provider',
         'stars': stars,
-        'review': review,
+        'comment': review,
         'relatedBooking': booking.id,
         'relatedService': booking.serviceId,
       });
 
-      // Reload bookings
+      // Reload bookings to reflect the changes
       await _loadActiveBookings();
 
       if (mounted) {
@@ -688,6 +690,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           const SnackBar(
             content: Text('Rating submitted successfully!'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -697,6 +700,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           SnackBar(
             content: Text('Error: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

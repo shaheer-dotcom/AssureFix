@@ -8,9 +8,17 @@ import 'terms_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'change_password_screen.dart';
 import '../support/help_support_screen.dart';
+import '../admin/admin_login_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  int _adminTapCount = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -112,10 +120,11 @@ class SettingsScreen extends StatelessWidget {
               Card(
                 child: Column(
                   children: [
-                    const ListTile(
-                      leading: Icon(Icons.info),
-                      title: Text('About'),
-                      subtitle: Text('AssureFix v1.0.0'),
+                    ListTile(
+                      leading: const Icon(Icons.info),
+                      title: const Text('About'),
+                      subtitle: const Text('AssureFix v1.0.0'),
+                      onTap: _onVersionTap,
                     ),
                     const Divider(height: 1),
                     ListTile(
@@ -164,6 +173,30 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               
+              const SizedBox(height: 16),
+              
+              // Admin Access
+              Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.admin_panel_settings, color: Colors.orange),
+                      title: const Text('Admin Panel'),
+                      subtitle: const Text('Administrative access'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AdminLoginScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              
               const SizedBox(height: 32),
               
               // Logout Button
@@ -184,6 +217,77 @@ class SettingsScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  void _onVersionTap() {
+    setState(() {
+      _adminTapCount++;
+    });
+
+    if (_adminTapCount >= 7) {
+      // Reset counter
+      _adminTapCount = 0;
+      
+      // Show admin access dialog
+      _showAdminAccessDialog();
+    } else if (_adminTapCount >= 5) {
+      // Give hint after 5 taps
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${7 - _adminTapCount} more taps for admin access'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+
+    // Reset counter after 3 seconds of inactivity
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _adminTapCount = 0;
+        });
+      }
+    });
+  }
+
+  void _showAdminAccessDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.admin_panel_settings, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Admin Access'),
+            ],
+          ),
+          content: const Text('Do you want to access the admin panel?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminLoginScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Admin Login'),
+            ),
+          ],
+        );
+      },
     );
   }
 

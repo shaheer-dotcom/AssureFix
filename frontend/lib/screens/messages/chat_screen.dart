@@ -373,17 +373,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   Navigator.pop(context);
                   _sendAttachment('📷 Photo');
                 }),
-                _buildAttachmentOption(Icons.videocam, 'Video', () {
-                  Navigator.pop(context);
-                  _sendAttachment('🎥 Video');
-                }),
                 _buildAttachmentOption(Icons.insert_drive_file, 'Document', () {
                   Navigator.pop(context);
                   _sendAttachment('📄 Document');
                 }),
                 _buildAttachmentOption(Icons.location_on, 'Location', () {
                   Navigator.pop(context);
-                  _sendAttachment('📍 Location shared');
+                  _shareLocation();
                 }),
               ],
             ),
@@ -540,14 +536,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.videocam),
-              title: const Text('Video Call'),
-              onTap: () {
-                Navigator.pop(context);
-                _showVideoCallDialog();
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.attach_file),
               title: const Text('Send File'),
               onTap: () {
@@ -585,31 +573,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _showVideoCallDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Video Call ${widget.userName}'),
-        content: const Text('Would you like to start a video call?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Video call started')),
-              );
-            },
-            icon: const Icon(Icons.videocam),
-            label: const Text('Start'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showFileOptions() {
     showModalBottomSheet(
@@ -634,12 +597,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Photo sent')),
-                  );
-                }),
-                _buildFileOption(Icons.videocam, 'Video', () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Video sent')),
                   );
                 }),
                 _buildFileOption(Icons.insert_drive_file, 'Document', () {

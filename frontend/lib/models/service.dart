@@ -10,6 +10,8 @@ class Service {
   final double pricePerHour;
   final String priceType; // 'fixed' or 'hourly'
   final bool isActive;
+  final int totalBookings;
+  final int completedBookings;
   final DateTime createdAt;
   final DateTime updatedAt;
   final Map<String, dynamic>? providerInfo; // Provider details
@@ -26,6 +28,8 @@ class Service {
     required this.pricePerHour,
     required this.priceType,
     required this.isActive,
+    this.totalBookings = 0,
+    this.completedBookings = 0,
     required this.createdAt,
     required this.updatedAt,
     this.providerInfo,
@@ -49,6 +53,26 @@ class Service {
       return providerInfo!['profile']['phoneNumber'] ?? '';
     }
     return '';
+  }
+
+  double get providerRating {
+    if (providerInfo != null && providerInfo!['serviceProviderRating'] != null) {
+      final rating = providerInfo!['serviceProviderRating'];
+      if (rating is Map && rating['average'] != null) {
+        return _parseDouble(rating['average']);
+      }
+    }
+    return 0.0;
+  }
+
+  int get providerRatingCount {
+    if (providerInfo != null && providerInfo!['serviceProviderRating'] != null) {
+      final rating = providerInfo!['serviceProviderRating'];
+      if (rating is Map && rating['count'] != null) {
+        return rating['count'] is int ? rating['count'] : int.tryParse(rating['count'].toString()) ?? 0;
+      }
+    }
+    return 0;
   }
 
   factory Service.fromJson(Map<String, dynamic> json) {
@@ -90,6 +114,8 @@ class Service {
         pricePerHour: _parseDouble(json['pricePerHour'] ?? json['price']),
         priceType: json['priceType']?.toString() ?? 'fixed',
         isActive: json['isActive'] == true,
+        totalBookings: json['totalBookings'] is int ? json['totalBookings'] : int.tryParse(json['totalBookings']?.toString() ?? '0') ?? 0,
+        completedBookings: json['completedBookings'] is int ? json['completedBookings'] : int.tryParse(json['completedBookings']?.toString() ?? '0') ?? 0,
         createdAt: _parseDateTime(json['createdAt']),
         updatedAt: _parseDateTime(json['updatedAt']),
         providerInfo: providerInfo,
@@ -132,6 +158,8 @@ class Service {
       'pricePerHour': pricePerHour,
       'priceType': priceType,
       'isActive': isActive,
+      'totalBookings': totalBookings,
+      'completedBookings': completedBookings,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };

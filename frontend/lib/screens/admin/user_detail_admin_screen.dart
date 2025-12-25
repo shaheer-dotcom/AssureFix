@@ -408,24 +408,30 @@ class _UserDetailAdminScreenState extends State<UserDetailAdminScreen>
   Widget _buildReviewsTab() {
     final user = _userDetails!['user'];
     final profile = user['profile'] ?? {};
+    final userType = profile['userType'] ?? 'customer';
     final customerRating = user['customerRating'] ?? {};
     final providerRating = user['serviceProviderRating'] ?? {};
+    
+    // Show only relevant rating based on user type
+    final isProvider = userType == 'service_provider';
+    final displayRating = isProvider ? providerRating : customerRating;
+    final displayTitle = isProvider ? 'Service Provider Rating' : 'Customer Rating';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Customer Rating
+          // Show only relevant rating
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'As Customer',
-                    style: TextStyle(
+                  Text(
+                    displayTitle,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -436,7 +442,7 @@ class _UserDetailAdminScreenState extends State<UserDetailAdminScreen>
                       const Icon(Icons.star, color: Colors.amber, size: 32),
                       const SizedBox(width: 8),
                       Text(
-                        (customerRating['average'] ?? 0.0).toStringAsFixed(1),
+                        (displayRating['average'] ?? 0.0).toStringAsFixed(1),
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -444,10 +450,20 @@ class _UserDetailAdminScreenState extends State<UserDetailAdminScreen>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '(${customerRating['count'] ?? 0} reviews)',
+                        '(${displayRating['count'] ?? 0} reviews)',
                         style: const TextStyle(color: Colors.grey),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isProvider 
+                        ? 'Ratings received for services provided'
+                        : 'Ratings received as a customer',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
                 ],
               ),
@@ -455,39 +471,68 @@ class _UserDetailAdminScreenState extends State<UserDetailAdminScreen>
           ),
           const SizedBox(height: 16),
           
-          // Provider Rating (if applicable)
-          if (profile['userType'] == 'service_provider')
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'As Service Provider',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+          // Note about rating type
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isProvider
+                        ? 'Service providers are rated by customers for the services they provide.'
+                        : 'Customers are rated by service providers after service completion.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue.shade900,
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 32),
-                        const SizedBox(width: 8),
-                        Text(
-                          (providerRating['average'] ?? 0.0).toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '(${providerRating['count'] ?? 0} reviews)',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                      ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Reviews list would go here
+          if ((displayRating['count'] ?? 0) > 0) ...[
+            const Text(
+              'Recent Reviews',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Reviews list will be displayed here',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ] else
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.star_border,
+                      size: 64,
+                      color: Colors.grey.shade300,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No reviews yet',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),

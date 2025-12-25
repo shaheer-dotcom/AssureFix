@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 import '../../models/service.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/conversation_provider.dart';
-import '../../config/api_config.dart';
-import '../messages/chat_screen.dart';
 
 class BookingFormScreen extends StatefulWidget {
   final Service service;
@@ -26,6 +20,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   
+  String _bookingType = 'reservation'; // 'immediate' or 'reservation'
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
@@ -53,10 +48,12 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Book Service'),
-        backgroundColor: const Color(0xFF4CAF50),
+        backgroundColor: isDark ? Colors.black : const Color(0xFF1976D2),
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -68,18 +65,21 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(
+                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Service Summary',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -91,9 +91,10 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                           children: [
                             Text(
                               widget.service.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : Colors.black87,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -101,7 +102,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                               widget.service.category,
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey.shade600,
+                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -110,14 +111,14 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                                 Icon(
                                   Icons.location_on,
                                   size: 16,
-                                  color: Colors.grey.shade600,
+                                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   widget.service.area,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey.shade600,
+                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                                   ),
                                 ),
                               ],
@@ -130,17 +131,17 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                         children: [
                           Text(
                             '₹${widget.service.price.toStringAsFixed(0)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2E7D32),
+                              color: isDark ? Colors.green.shade400 : const Color(0xFF2E7D32),
                             ),
                           ),
                           Text(
                             widget.service.priceType == 'hourly' ? 'per hour' : 'fixed',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade600,
+                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                             ),
                           ),
                         ],
@@ -159,11 +160,102 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Booking Details',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Booking Type Selection
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Booking Type *',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: Text(
+                                    'Book Now',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Immediate service',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                  value: 'immediate',
+                                  groupValue: _bookingType,
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _bookingType = value!;
+                                      // Clear date/time for immediate bookings
+                                      if (_bookingType == 'immediate') {
+                                        _selectedDate = null;
+                                        _selectedTime = null;
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: Text(
+                                    'Schedule',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Book for later',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                  value: 'reservation',
+                                  groupValue: _bookingType,
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _bookingType = value!;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -227,10 +319,11 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Date Selection
-                    InkWell(
-                      onTap: _selectDate,
-                      child: Container(
+                    // Date Selection (only for reservation bookings)
+                    if (_bookingType == 'reservation') ...[
+                      InkWell(
+                        onTap: _selectDate,
+                        child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           border: Border.all(color: Colors.grey.shade400),
@@ -270,13 +363,13 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      ),
+                      const SizedBox(height: 16),
 
-                    // Time Selection
-                    InkWell(
-                      onTap: _selectTime,
-                      child: Container(
+                      // Time Selection
+                      InkWell(
+                        onTap: _selectTime,
+                        child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           border: Border.all(color: Colors.grey.shade400),
@@ -316,52 +409,74 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                           ],
                         ),
                       ),
-                    ),
+                      ),
+                    ],
+                    
+                    // Info message for immediate bookings
+                    if (_bookingType == 'immediate')
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Service provider will be notified immediately and can start the service as soon as they accept.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.orange.shade900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    
                     const SizedBox(height: 24),
 
-                    // Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _openChat,
-                            icon: const Icon(Icons.message),
-                            label: const Text('Message Provider'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              side: const BorderSide(color: Color(0xFF4CAF50)),
-                              foregroundColor: const Color(0xFF4CAF50),
+                    // Action Button
+                    Consumer<BookingProvider>(
+                      builder: (context, bookingProvider, child) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: bookingProvider.isLoading ? null : _bookService,
+                            icon: bookingProvider.isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Icon(Icons.check_circle),
+                            label: Text(
+                              bookingProvider.isLoading 
+                                  ? 'Booking...' 
+                                  : 'Confirm Booking',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1976D2),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: Consumer<BookingProvider>(
-                            builder: (context, bookingProvider, child) {
-                              return ElevatedButton.icon(
-                                onPressed: bookingProvider.isLoading ? null : _bookService,
-                                icon: bookingProvider.isLoading
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        ),
-                                      )
-                                    : const Icon(Icons.check),
-                                label: Text(bookingProvider.isLoading ? 'Booking...' : 'Confirm Booking'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF4CAF50),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -383,7 +498,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF4CAF50),
+              primary: Color(0xFF1976D2),
             ),
           ),
           child: child!,
@@ -406,7 +521,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF4CAF50),
+              primary: Color(0xFF1976D2),
             ),
           ),
           child: child!,
@@ -421,37 +536,18 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     }
   }
 
-  void _openChat() {
-    // Create conversation and navigate to chat
-    final conversationProvider = Provider.of<ConversationProvider>(context, listen: false);
-    conversationProvider.addConversation(
-      widget.service.providerId,
-      'Service Provider',
-      'S',
-    );
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChatScreen(
-          conversationId: widget.service.providerId,
-          userName: 'Service Provider',
-          userAvatar: 'S',
-        ),
-      ),
-    );
-  }
-
   Future<void> _bookService() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    if (_selectedDate == null) {
+    // Validate date for reservation bookings
+    if (_bookingType == 'reservation' && _selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a reservation date'),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
         ),
       );
       return;
@@ -459,45 +555,43 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
     final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
 
-    // Combine date and time
-    DateTime reservationDateTime = _selectedDate!;
-    if (_selectedTime != null) {
-      reservationDateTime = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
-      );
-    }
-
-    final bookingData = {
+    // Prepare booking data based on type
+    final bookingData = <String, dynamic>{
       'serviceId': widget.service.id,
+      'bookingType': _bookingType,
       'customerDetails': {
         'name': _nameController.text.trim(),
         'phoneNumber': _phoneController.text.trim(),
         'exactAddress': _addressController.text.trim(),
       },
-      'reservationDate': reservationDateTime.toIso8601String(),
       'hoursBooked': 1, // Default to 1 hour, can be made configurable
     };
+
+    // Add reservation date only for scheduled bookings
+    if (_bookingType == 'reservation') {
+      DateTime reservationDateTime = _selectedDate!;
+      if (_selectedTime != null) {
+        reservationDateTime = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month,
+          _selectedDate!.day,
+          _selectedTime!.hour,
+          _selectedTime!.minute,
+        );
+      }
+      bookingData['reservationDate'] = reservationDateTime.toIso8601String();
+    }
 
     final success = await bookingProvider.createBooking(bookingData);
 
     if (success && mounted) {
-      // Create chat conversation for this booking
-      try {
-        await _createChatConversation();
-      } catch (e) {
-        print('Failed to create chat: $e');
-        // Don't fail the booking if chat creation fails
-      }
-
+      // Chat will be created automatically when provider accepts the booking
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Service booked successfully!'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
           ),
         );
         // Navigate back to main screen or booking history
@@ -508,35 +602,10 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
         SnackBar(
           content: Text('Failed to book service: ${bookingProvider.error}'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
   }
 
-  Future<void> _createChatConversation() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
-    
-    if (token == null) return;
-
-    try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrlWithoutApi}/api/chat/create'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'serviceId': widget.service.id,
-          'providerId': widget.service.providerId,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        print('Chat conversation created successfully');
-      }
-    } catch (e) {
-      print('Error creating chat: $e');
-    }
-  }
 }

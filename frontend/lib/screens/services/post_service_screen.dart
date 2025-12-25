@@ -15,7 +15,7 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
   final _descriptionController = TextEditingController();
   final _areaController = TextEditingController();
   final _priceController = TextEditingController();
-  
+
   String _selectedCategory = 'Home Services';
   String _selectedPriceType = 'fixed';
   final List<String> _areas = [];
@@ -69,7 +69,8 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
   void _onSubmitted(String value) {
     final trimmedValue = value.trim();
     if (trimmedValue.isNotEmpty && trimmedValue.length >= 2) {
-      final sanitizedValue = trimmedValue.replaceAll(RegExp(r'[^\w\s\-\.]'), '');
+      final sanitizedValue =
+          trimmedValue.replaceAll(RegExp(r'[^\w\s\-\.]'), '');
       if (sanitizedValue.isNotEmpty) {
         setState(() {
           _areas.add(sanitizedValue);
@@ -83,7 +84,8 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
   void _addCurrentInput() {
     final trimmedValue = _currentInput.trim();
     if (trimmedValue.isNotEmpty && trimmedValue.length >= 2) {
-      final sanitizedValue = trimmedValue.replaceAll(RegExp(r'[^\w\s\-\.]'), '');
+      final sanitizedValue =
+          trimmedValue.replaceAll(RegExp(r'[^\w\s\-\.]'), '');
       if (sanitizedValue.isNotEmpty) {
         setState(() {
           _areas.add(sanitizedValue);
@@ -214,7 +216,9 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
               controller: _priceController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: _selectedPriceType == 'fixed' ? 'Price (₹)' : 'Price per Hour (₹)',
+                labelText: _selectedPriceType == 'fixed'
+                    ? 'Price (₹)'
+                    : 'Price per Hour (₹)',
                 hintText: 'Enter amount',
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.currency_rupee),
@@ -254,7 +258,8 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
                       ),
 
                     ElevatedButton(
-                      onPressed: serviceProvider.isLoading ? null : _submitService,
+                      onPressed:
+                          serviceProvider.isLoading ? null : _submitService,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1565C0),
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -265,7 +270,8 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
                           : const Text(
@@ -340,7 +346,7 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
       );
       return;
     }
-    
+
     final price = double.tryParse(priceText);
     if (price == null || price < 100) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -363,7 +369,8 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
       'priceType': _selectedPriceType,
     };
 
-    final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
+    final serviceProvider =
+        Provider.of<ServiceProvider>(context, listen: false);
     final success = await serviceProvider.createService(serviceData);
 
     if (success && mounted) {
@@ -459,17 +466,19 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
                       'Service Areas',
                       style: TextStyle(
                         fontSize: 12,
-                        color: state.hasError ? Colors.red : Colors.grey.shade600,
+                        color:
+                            state.hasError ? Colors.red : Colors.grey.shade600,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
                   ),
-                  
+
                   // Content area with inline tags and input
                   GestureDetector(
                     onTap: () => _areaFocusNode.requestFocus(),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -483,27 +492,32 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
                               children: [
                                 // Display existing tags
                                 ..._areas.map((area) => _buildAreaTag(area)),
-                                
+
                                 // Inline text input
                                 IntrinsicWidth(
                                   child: ConstrainedBox(
-                                    constraints: const BoxConstraints(minWidth: 100),
+                                    constraints:
+                                        const BoxConstraints(minWidth: 100),
                                     child: TextField(
                                       controller: _areaController,
                                       focusNode: _areaFocusNode,
                                       onChanged: _onTextChanged,
                                       onSubmitted: _onSubmitted,
                                       decoration: InputDecoration(
-                                        hintText: _areas.isEmpty && _currentInput.isEmpty
+                                        hintText: _areas.isEmpty &&
+                                                _currentInput.isEmpty
                                             ? 'Type area name and press Enter'
                                             : '',
                                         hintStyle: TextStyle(
-                                          color: Colors.grey.withValues(alpha: 0.4),
+                                          color: Colors.grey
+                                              .withValues(alpha: 0.4),
                                           fontSize: 16,
                                         ),
                                         border: InputBorder.none,
                                         isDense: true,
-                                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                vertical: 8),
                                       ),
                                       style: const TextStyle(fontSize: 16),
                                       maxLines: 1,
@@ -517,10 +531,11 @@ class _PostServiceScreenState extends State<PostServiceScreen> {
                       ),
                     ),
                   ),
-                  
+
                   // Helper text
                   Container(
-                    padding: const EdgeInsets.only(left: 44, right: 12, bottom: 8),
+                    padding:
+                        const EdgeInsets.only(left: 44, right: 12, bottom: 8),
                     child: Text(
                       'Press Enter to convert text to tag',
                       style: TextStyle(

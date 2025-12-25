@@ -17,7 +17,14 @@ router.get('/', auth, async (req, res) => {
     }
 
     const notifications = await Notification.find(query)
-      .populate('relatedBooking', 'serviceId reservationDate status')
+      .populate({
+        path: 'relatedBooking',
+        select: 'serviceId customerId reservationDate status customerDetails hoursBooked totalAmount',
+        populate: [
+          { path: 'serviceId', select: 'serviceName' },
+          { path: 'customerId', select: 'profile.name' }
+        ]
+      })
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);

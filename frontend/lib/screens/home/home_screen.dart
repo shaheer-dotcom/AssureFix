@@ -185,23 +185,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 
                 Row(
                   children: [
+                    // Show only relevant rating based on user type
                     Expanded(
                       child: _buildStatCard(
                         icon: Icons.star,
-                        title: 'Customer Rating',
-                        value: user?.customerRating.average.toStringAsFixed(1) ?? '0.0',
-                        subtitle: '${user?.customerRating.count ?? 0} reviews',
+                        title: profile?.userType == 'service_provider' 
+                            ? 'Provider Rating' 
+                            : 'Customer Rating',
+                        value: profile?.userType == 'service_provider'
+                            ? user?.serviceProviderRating.average.toStringAsFixed(1) ?? '0.0'
+                            : user?.customerRating.average.toStringAsFixed(1) ?? '0.0',
+                        subtitle: profile?.userType == 'service_provider'
+                            ? '${user?.serviceProviderRating.count ?? 0} reviews'
+                            : '${user?.customerRating.count ?? 0} reviews',
                         color: Colors.amber,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        icon: Icons.star_border,
-                        title: 'Provider Rating',
-                        value: user?.serviceProviderRating.average.toStringAsFixed(1) ?? '0.0',
-                        subtitle: '${user?.serviceProviderRating.count ?? 0} reviews',
-                        color: Colors.orange,
                       ),
                     ),
                     const SizedBox(width: 12),

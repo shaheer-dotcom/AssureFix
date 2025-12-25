@@ -33,15 +33,22 @@ class AuthProvider with ChangeNotifier {
   Future<void> checkAuthStatus() async {
     setLoading(true);
     try {
+      print('AuthProvider: Checking auth status');
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
+      print('AuthProvider: Token found: ${token != null && token.isNotEmpty}');
       
-      if (token != null) {
+      if (token != null && token.isNotEmpty) {
         ApiService.setAuthToken(token);
+        print('AuthProvider: Fetching current user');
         final userData = await ApiService.getCurrentUser();
         _user = User.fromJson(userData);
+        print('AuthProvider: User authenticated successfully');
+      } else {
+        print('AuthProvider: No token found');
       }
     } catch (e) {
+      print('AuthProvider: Auth check failed: $e');
       // Token might be invalid, clear it
       await logout();
     }
@@ -49,26 +56,44 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> login(String email, String password) async {
-    setLoading(true);
-    setError(null);
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
     
     try {
+      print('AuthProvider: Starting login for $email');
       final response = await ApiService.login(email, password);
+      print('AuthProvider: Login response received');
+      
       final token = response['token'];
       final userData = response['user'];
       
+      if (token == null || token.isEmpty) {
+        throw Exception('No token received from server');
+      }
+      
+      print('AuthProvider: Token received, saving to SharedPreferences');
       // Save token
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', token);
       
+      // Verify token was saved
+      final savedToken = prefs.getString('auth_token');
+      print('AuthProvider: Token saved successfully: ${savedToken != null && savedToken.isNotEmpty}');
+      
       ApiService.setAuthToken(token);
       _user = User.fromJson(userData);
+      print('AuthProvider: User object created, login successful');
       
-      setLoading(false);
+      _isLoading = false;
+      notifyListeners();
+      print('AuthProvider: notifyListeners called, UI should update');
       return true;
     } catch (e) {
-      setError(ErrorHandler.getErrorMessage(e));
-      setLoading(false);
+      print('AuthProvider: Login error: $e');
+      _error = ErrorHandler.getErrorMessage(e);
+      _isLoading = false;
+      notifyListeners();
       return false;
     }
   }

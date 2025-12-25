@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import '../config/api_config.dart';
 
 class ReportDialog extends StatefulWidget {
   final String reportedUserId;
@@ -38,7 +38,7 @@ class _ReportDialogState extends State<ReportDialog> {
   ];
 
   String get _baseUrl {
-    return kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000';
+    return ApiConfig.baseUrlWithoutApi;
   }
 
   @override

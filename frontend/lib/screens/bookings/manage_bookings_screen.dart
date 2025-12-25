@@ -7,6 +7,7 @@ import '../../widgets/empty_state_widget.dart';
 import '../../widgets/confirmation_dialog.dart';
 import '../../utils/error_handler.dart';
 import '../../services/api_service.dart';
+import '../profile/user_profile_view_screen.dart';
 
 class ManageBookingsScreen extends StatefulWidget {
   const ManageBookingsScreen({super.key});
@@ -91,24 +92,65 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
           );
         }
 
+        // Get current user to determine which bookings to show
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final currentUserId = authProvider.user?.id ?? '';
+
+        debugPrint('=== Filtering bookings for tab: $status ===');
+        debugPrint('Current User ID: $currentUserId');
+        debugPrint('Total bookings: ${bookingProvider.bookings.length}');
+
         final filteredBookings = status == 'active'
-            ? bookingProvider.bookings
-                .where((booking) => 
-                    booking.status == 'pending' || 
-                    booking.status == 'confirmed' || 
-                    booking.status == 'in_progress')
-                .toList()
-            : bookingProvider.bookings
-                .where((booking) => booking.status == status)
-                .toList();
+            ? bookingProvider.bookings.where((booking) {
+                final isCustomer = booking.customerId == currentUserId;
+                final hasUserRated =
+                    isCustomer ? booking.customerRated : booking.providerRated;
+
+                debugPrint(
+                    'Booking ${booking.id}: status=${booking.status}, isCustomer=$isCustomer, customerRated=${booking.customerRated}, providerRated=${booking.providerRated}, hasUserRated=$hasUserRated');
+
+                // Show in active if:
+                // 1. Status is pending/confirmed/in_progress (regardless of rating)
+                // 2. OR status is completed but user hasn't rated yet
+                final showInActive = (booking.status == 'pending' ||
+                        booking.status == 'confirmed' ||
+                        booking.status == 'in_progress') ||
+                    (booking.status == 'completed' && !hasUserRated);
+
+                debugPrint('  -> Show in Active: $showInActive');
+                return showInActive;
+              }).toList()
+            : status == 'completed'
+                ? bookingProvider.bookings.where((booking) {
+                    final isCustomer = booking.customerId == currentUserId;
+                    final hasUserRated = isCustomer
+                        ? booking.customerRated
+                        : booking.providerRated;
+
+                    debugPrint(
+                        'Booking ${booking.id}: status=${booking.status}, hasUserRated=$hasUserRated');
+
+                    // Show in completed only if user has rated
+                    final showInCompleted =
+                        booking.status == 'completed' && hasUserRated;
+                    debugPrint('  -> Show in Completed: $showInCompleted');
+                    return showInCompleted;
+                  }).toList()
+                : bookingProvider.bookings
+                    .where((booking) => booking.status == status)
+                    .toList();
+
+        debugPrint('Filtered bookings count: ${filteredBookings.length}');
 
         if (filteredBookings.isEmpty) {
           return EmptyStateWidget.noBookings(
             bookingType: _getStatusTitle(status),
-            onAction: status == 'active' ? () {
-              Navigator.pop(context);
-              // Navigate to search services
-            } : null,
+            onAction: status == 'active'
+                ? () {
+                    Navigator.pop(context);
+                    // Navigate to search services
+                  }
+                : null,
           );
         }
 
@@ -132,7 +174,14 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUserId = authProvider.user?.id ?? '';
     final isCustomer = booking.customerId == currentUserId;
-    
+
+    // Determine per-user status
+    final hasUserRated =
+        isCustomer ? booking.customerRated : booking.providerRated;
+    final userSpecificStatus = (booking.status == 'completed' && !hasUserRated)
+        ? 'pending_rating' // Show as pending rating if completed but user hasn't rated
+        : booking.status;
+
     // Determine which name to show based on user role
     String displayName;
     String displayLabel;
@@ -145,7 +194,7 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
       displayName = booking.customerName ?? booking.customerDetails.name;
       displayLabel = 'Booked by';
     }
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -167,37 +216,100 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        '$displayLabel: $displayName',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
+                      InkWell(
+                        onTap: () {
+                          final otherUserId = isCustomer ? booking.providerId : booking.customerId;
+                          final otherUserName = isCustomer 
+                              ? (booking.providerName ?? 'Service Provider')
+                              : (booking.customerName ?? 'Customer');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserProfileViewScreen(
+                                userId: otherUserId,
+                                userName: otherUserName,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '$displayLabel: $displayName',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(booking.status),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _getStatusTitle(booking.status),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(userSpecificStatus),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _getStatusTitle(userSpecificStatus),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (booking.bookingType == 'immediate') ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.flash_on,
+                                size: 10, color: Colors.orange.shade700),
+                            const SizedBox(width: 2),
+                            Text(
+                              'IMMEDIATE',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                Icon(Icons.calendar_today,
+                    size: 16, color: Colors.grey.shade600),
                 const SizedBox(width: 8),
                 Text(
                   '${booking.reservationDate.day}/${booking.reservationDate.month}/${booking.reservationDate.year}',
@@ -228,47 +340,184 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
-                  '₹${booking.totalAmount.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
-                  ),
+            if (booking.completionInitiatedBy != null) ...[
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
                 ),
-                const Spacer(),
-                if ((booking.status == 'pending' || booking.status == 'confirmed' || booking.status == 'in_progress') && booking.canCancel) ...[
-                  // Only show Edit button for customers
-                  if (isCustomer)
-                    TextButton(
-                      onPressed: () => _showEditDialog(booking),
-                      child: const Text('Edit'),
+                child: Row(
+                  children: [
+                    Icon(Icons.pending_actions,
+                        size: 16, color: Colors.orange.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isCustomer
+                            ? (booking.completionInitiatedBy == 'customer'
+                                ? 'You marked as complete. Waiting for provider confirmation.'
+                                : 'Provider marked as complete. Please confirm and rate.')
+                            : (booking.completionInitiatedBy == 'provider'
+                                ? 'You marked as complete. Waiting for customer confirmation.'
+                                : 'Customer marked as complete. Please confirm and rate.'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange.shade900,
+                        ),
+                      ),
                     ),
-                  TextButton(
-                    onPressed: () => _cancelBookingWithConfirmation(booking),
-                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            // Show ratings status if booking is completed
+            if (booking.status == 'completed') ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.star, size: 16, color: Colors.amber.shade700),
+                  const SizedBox(width: 4),
+                  Text(
+                    isCustomer
+                        ? (booking.customerRated
+                            ? 'You rated this booking'
+                            : 'Rating pending')
+                        : (booking.providerRated
+                            ? 'You rated this booking'
+                            : 'Rating pending'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: (isCustomer ? booking.customerRated : booking.providerRated)
+                          ? Colors.green.shade700
+                          : Colors.orange.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                  const Spacer(),
+                  if ((isCustomer && booking.customerRated) || (!isCustomer && booking.providerRated))
+                    TextButton.icon(
+                      onPressed: () {
+                        // Navigate to view ratings for this booking
+                        final otherUserId = isCustomer ? booking.providerId : booking.customerId;
+                        final otherUserName = isCustomer 
+                            ? (booking.providerName ?? 'Service Provider')
+                            : (booking.customerName ?? 'Customer');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserProfileViewScreen(
+                              userId: otherUserId,
+                              userName: otherUserName,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.visibility, size: 14),
+                      label: const Text('View Profile'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
+                    ),
                 ],
-                if (booking.status == 'pending' || booking.status == 'confirmed' || booking.status == 'in_progress')
-                  ElevatedButton(
-                    onPressed: () => _showCompletionDialog(booking),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      foregroundColor: Colors.white,
+              ),
+            ],
+            const SizedBox(height: 12),
+            // Price and action buttons section
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Price row
+                Row(
+                  children: [
+                    Text(
+                      '₹${booking.totalAmount.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2E7D32),
+                      ),
                     ),
-                    child: const Text('Completed'),
-                  ),
-                if (booking.status == 'completed' || booking.status == 'cancelled')
-                  ElevatedButton(
-                    onPressed: () => _viewBookingDetails(booking),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1565C0),
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('View Details'),
-                  ),
+                    const Spacer(),
+                    // Quick action buttons (Edit/Cancel)
+                    if ((booking.status == 'pending' ||
+                            booking.status == 'confirmed' ||
+                            booking.status == 'in_progress') &&
+                        booking.canCancel) ...[
+                      // Only show Edit button for customers
+                      if (isCustomer)
+                        TextButton(
+                          onPressed: () => _showEditDialog(booking),
+                          child: const Text('Edit'),
+                        ),
+                      TextButton(
+                        onPressed: () => _cancelBookingWithConfirmation(booking),
+                        child: const Text('Cancel',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Main action buttons row
+                Row(
+                  children: [
+                    // Show Mark Complete / Confirm & Rate button if:
+                    // 1. Status is pending/confirmed/in_progress OR
+                    // 2. Status is completed but user hasn't rated yet
+                    if (booking.status == 'pending' ||
+                        booking.status == 'confirmed' ||
+                        booking.status == 'in_progress' ||
+                        (booking.status == 'completed' && !hasUserRated))
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _showCompletionDialog(booking),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1565C0),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Text(
+                            (booking.status == 'completed' && !hasUserRated)
+                                ? 'Rate & Complete'
+                                : (booking.completionInitiatedBy != null
+                                    ? 'Confirm & Rate'
+                                    : 'Mark Complete'),
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    
+                    // Add spacing between buttons if both exist
+                    if ((booking.status == 'pending' ||
+                            booking.status == 'confirmed' ||
+                            booking.status == 'in_progress' ||
+                            (booking.status == 'completed' && !hasUserRated)) &&
+                        (booking.status == 'completed' ||
+                            booking.status == 'cancelled'))
+                      const SizedBox(width: 8),
+                    
+                    // View Details button
+                    if (booking.status == 'completed' ||
+                        booking.status == 'cancelled')
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _viewBookingDetails(booking),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1565C0),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: const Text(
+                            'View Details',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ],
@@ -282,11 +531,14 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
       case 'pending':
         return Colors.orange;
       case 'confirmed':
-        return Colors.blue;
+        return const Color(0xFF1565C0); // Blue theme
       case 'in_progress':
-        return Colors.purple;
+        return const Color(0xFF1976D2); // Lighter blue
+      case 'pending_rating':
+        return const Color(
+            0xFF1E88E5); // Medium blue - waiting for user to rate
       case 'completed':
-        return Colors.green;
+        return const Color(0xFF2E7D32); // Green
       case 'cancelled':
         return Colors.red;
       default:
@@ -303,10 +555,24 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
 
   Future<void> _cancelBooking(Booking booking) async {
     try {
-      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
-      await bookingProvider.cancelBooking(booking.id, cancellationReason: 'Cancelled by user');
+      final bookingProvider =
+          Provider.of<BookingProvider>(context, listen: false);
+      final success = await bookingProvider.cancelBooking(booking.id,
+          cancellationReason: 'Cancelled by user');
+
       if (mounted) {
-        ErrorHandler.showSuccessSnackBar(context, 'Booking cancelled successfully');
+        if (success) {
+          ErrorHandler.showSuccessSnackBar(
+              context, 'Booking cancelled successfully');
+          // Reload bookings to show updated list
+          _loadBookings();
+        } else {
+          ErrorHandler.showErrorSnackBar(
+            context,
+            bookingProvider.error ?? 'Failed to cancel booking',
+            onRetry: () => _cancelBooking(booking),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -318,8 +584,6 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
       }
     }
   }
-
-
 
   void _viewBookingDetails(Booking booking) {
     showDialog(
@@ -333,8 +597,10 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
             Text('Customer: ${booking.customerDetails.name}'),
             Text('Phone: ${booking.customerDetails.phoneNumber}'),
             Text('Address: ${booking.customerDetails.exactAddress}'),
-            Text('Date: ${booking.reservationDate.day}/${booking.reservationDate.month}/${booking.reservationDate.year}'),
-            Text('Time: ${booking.reservationDate.hour.toString().padLeft(2, '0')}:${booking.reservationDate.minute.toString().padLeft(2, '0')}'),
+            Text(
+                'Date: ${booking.reservationDate.day}/${booking.reservationDate.month}/${booking.reservationDate.year}'),
+            Text(
+                'Time: ${booking.reservationDate.hour.toString().padLeft(2, '0')}:${booking.reservationDate.minute.toString().padLeft(2, '0')}'),
             Text('Amount: ₹${booking.totalAmount.toStringAsFixed(0)}'),
             Text('Status: ${_getStatusTitle(booking.status)}'),
           ],
@@ -357,6 +623,8 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
         return 'Confirmed';
       case 'in_progress':
         return 'In Progress';
+      case 'pending_rating':
+        return 'Awaiting Rating';
       case 'completed':
         return 'Completed';
       default:
@@ -365,9 +633,12 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
   }
 
   void _showEditDialog(Booking booking) {
-    final nameController = TextEditingController(text: booking.customerDetails.name);
-    final phoneController = TextEditingController(text: booking.customerDetails.phoneNumber);
-    final addressController = TextEditingController(text: booking.customerDetails.exactAddress);
+    final nameController =
+        TextEditingController(text: booking.customerDetails.name);
+    final phoneController =
+        TextEditingController(text: booking.customerDetails.phoneNumber);
+    final addressController =
+        TextEditingController(text: booking.customerDetails.exactAddress);
     DateTime selectedDate = booking.reservationDate;
     TimeOfDay selectedTime = TimeOfDay.fromDateTime(booking.reservationDate);
 
@@ -487,51 +758,92 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
     TimeOfDay time,
   ) async {
     try {
-      // Here you would make an API call to update the booking
-      // For now, we'll simulate the update
-      await Future.delayed(const Duration(seconds: 1));
-      
+      // Combine date and time
+      final reservationDateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+
+      // Prepare update data
+      final updateData = {
+        'customerDetails': {
+          'name': name,
+          'phoneNumber': phone,
+          'exactAddress': address,
+        },
+        'reservationDate': reservationDateTime.toIso8601String(),
+      };
+
+      // Call API to update booking
+      await ApiService.updateBooking(booking.id, updateData);
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Booking updated successfully'),
-            backgroundColor: Colors.green,
-          ),
+        ErrorHandler.showSuccessSnackBar(
+          context,
+          'Booking updated successfully',
         );
-        
+
         // Reload bookings to reflect the change
         _loadBookings();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update booking: $e'),
-            backgroundColor: Colors.red,
-          ),
+        ErrorHandler.showErrorSnackBar(
+          context,
+          ErrorHandler.getErrorMessage(e),
+          onRetry: () =>
+              _updateBooking(booking, name, phone, address, date, time),
         );
       }
     }
   }
 
   void _showCompletionDialog(Booking booking) {
+    // Get current user info to determine if they're customer or provider
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = authProvider.user?.id ?? '';
+    final isCustomer = booking.customerId == currentUserId;
+
+    // Check if user already rated
+    if ((isCustomer && booking.customerRated) ||
+        (!isCustomer && booking.providerRated)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You have already rated this booking'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Show rating dialog directly
+    _showRatingDialog(booking, isCustomer);
+  }
+
+  void _showRatingDialog(Booking booking, bool isCustomer) {
     int rating = 0;
     final reviewController = TextEditingController();
-    
+    final bool isFirstToComplete = booking.status != 'completed';
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: const Text('Rate Service Provider'),
+            title: Text(isCustomer ? 'Rate Service Provider' : 'Rate Customer'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'How was your experience with the service provider?',
-                    style: TextStyle(fontSize: 14),
+                  Text(
+                    isFirstToComplete
+                        ? 'Please rate your experience with the ${isCustomer ? 'service provider' : 'customer'}.'
+                        : 'The ${isCustomer ? 'service provider' : 'customer'} has marked this booking as complete. Please rate your experience.',
+                    style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -589,10 +901,12 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
                 onPressed: rating > 0
                     ? () async {
                         Navigator.pop(context);
-                        await _submitRatingAndComplete(
+                        await _submitRatingAndMarkComplete(
                           booking,
                           rating,
                           reviewController.text,
+                          isCustomer,
+                          isFirstToComplete,
                         );
                       }
                     : null,
@@ -600,7 +914,9 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
                   backgroundColor: const Color(0xFF1565C0),
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Submit'),
+                child: Text(isFirstToComplete
+                    ? 'Submit & Mark Complete'
+                    : 'Submit Rating'),
               ),
             ],
           );
@@ -609,33 +925,52 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
     );
   }
 
-  Future<void> _submitRatingAndComplete(
+  Future<void> _submitRatingAndMarkComplete(
     Booking booking,
     int stars,
     String review,
+    bool isCustomer,
+    bool isFirstToComplete,
   ) async {
     try {
-      // Show loading
+      debugPrint('=== Starting rating submission ===');
+      debugPrint('Booking ID: ${booking.id}');
+      debugPrint('Booking Status: ${booking.status}');
+      debugPrint('Is Customer: $isCustomer');
+      debugPrint('Is First To Complete: $isFirstToComplete');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Submitting rating...')),
+          const SnackBar(
+            content: Text('Submitting rating...'),
+            duration: Duration(seconds: 2),
+          ),
         );
       }
 
+      // Determine who to rate based on current user role
+      final ratedUserId = isCustomer ? booking.providerId : booking.customerId;
+      final ratingType = isCustomer ? 'service_provider' : 'customer';
+
+      debugPrint('Rating User ID: $ratedUserId');
+      debugPrint('Rating Type: $ratingType');
+
       // Submit rating via POST /api/ratings endpoint
       final ratingData = {
-        'ratedUserId': booking.providerId,
-        'ratingType': 'service_provider',
+        'ratedUserId': ratedUserId,
+        'ratingType': ratingType,
         'stars': stars,
         'comment': review,
         'relatedBooking': booking.id,
         'relatedService': booking.serviceId,
       };
 
+      debugPrint('Submitting rating data: $ratingData');
+
+      // Submit rating - backend will automatically mark booking as completed
       await ApiService.createRating(ratingData);
 
-      // Update booking status to 'completed' via PATCH /api/bookings/:id/status
-      await ApiService.updateBookingStatus(booking.id, 'completed');
+      debugPrint('Rating submitted successfully');
 
       // Reload bookings to reflect the changes
       _loadBookings();
@@ -643,15 +978,27 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen>
       if (mounted) {
         ErrorHandler.showSuccessSnackBar(
           context,
-          'Rating submitted and booking completed successfully!',
+          'Rating submitted successfully! Booking marked as complete.',
         );
       }
     } catch (e) {
+      debugPrint('Error submitting rating: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+
       if (mounted) {
-        ErrorHandler.showErrorSnackBar(
-          context,
-          ErrorHandler.getErrorMessage(e),
-          onRetry: () => _submitRatingAndComplete(booking, stars, review),
+        // Show detailed error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () => _submitRatingAndMarkComplete(
+                  booking, stars, review, isCustomer, isFirstToComplete),
+            ),
+          ),
         );
       }
     }

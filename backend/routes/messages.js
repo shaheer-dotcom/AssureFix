@@ -42,21 +42,24 @@ const upload = multer({
 router.get('/conversations', auth, async (req, res) => {
   try {
     const User = require('../models/User');
+    const Chat = require('../models/Chat');
     const currentUser = await User.findById(req.user._id).select('blockedUsers');
     
-    const conversations = await Conversation.find({
-      participants: req.user._id
+    // Only fetch conversations with 'active' status (booking accepted)
+    const conversations = await Chat.find({
+      participants: req.user._id,
+      status: 'active'  // Only show active conversations (accepted bookings)
     })
       .populate('participants', 'profile.name profile.profilePicture')
-      .populate('relatedBooking', 'serviceId status')
+      .populate('bookingId', 'serviceId status')
       .populate({
-        path: 'relatedBooking',
+        path: 'bookingId',
         populate: {
           path: 'serviceId',
           select: 'serviceName'
         }
       })
-      .sort({ 'lastMessage.timestamp': -1 });
+      .sort({ lastMessage: -1 });
 
     // Filter out conversations with blocked users
     let filteredConversations = conversations;
@@ -71,11 +74,13 @@ router.get('/conversations', auth, async (req, res) => {
     }
 
     // Get unread count for each conversation
+    const Message = require('../models/Message');
     const conversationsWithUnread = await Promise.all(
       filteredConversations.map(async (conversation) => {
         const unreadCount = await Message.countDocuments({
           conversationId: conversation._id,
           receiverId: req.user._id,
+          senderId: { $ne: req.user._id }, // Exclude messages sent by current user
           isRead: false
         });
 
@@ -100,7 +105,8 @@ router.get('/:conversationId', auth, async (req, res) => {
     const { page = 1, limit = 50 } = req.query;
 
     // Verify conversation exists and user is participant
-    const conversation = await Conversation.findById(conversationId);
+    const Chat = require('../models/Chat');
+    const conversation = await Chat.findById(conversationId);
     if (!conversation) {
       return res.status(404).json({ message: 'Conversation not found' });
     }
@@ -111,6 +117,14 @@ router.get('/:conversationId', auth, async (req, res) => {
 
     if (!isParticipant) {
       return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Check if conversation is active
+    if (conversation.status !== 'active') {
+      return res.status(403).json({ 
+        message: 'Cannot access messages. Chat is not active. Booking must be accepted first.',
+        isActive: false
+      });
     }
 
     // Get messages with pagination
@@ -152,8 +166,9 @@ router.post('/', auth, [
     const { conversationId, messageType, content, location } = req.body;
 
     // Verify conversation exists and user is participant
-    const conversation = await Conversation.findById(conversationId)
-      .populate('relatedBooking');
+    const Chat = require('../models/Chat');
+    const conversation = await Chat.findById(conversationId)
+      .populate('bookingId');
     
     if (!conversation) {
       return res.status(404).json({ message: 'Conversation not found' });
@@ -165,6 +180,14 @@ router.post('/', auth, [
 
     if (!isParticipant) {
       return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Check if conversation is active (only active conversations can send messages)
+    if (conversation.status !== 'active') {
+      return res.status(403).json({ 
+        message: 'Cannot send messages. Chat is not active. Booking must be accepted first.',
+        isActive: false
+      });
     }
 
     // Check if user has blocked or been blocked by the other participant
@@ -183,9 +206,9 @@ router.post('/', auth, [
       return res.status(403).json({ message: 'Cannot send messages. You have been blocked by this user' });
     }
 
-    // Check if conversation is active (booking status is pending or active)
-    const booking = conversation.relatedBooking;
-    if (!['pending', 'confirmed', 'in_progress'].includes(booking.status)) {
+    // Check if booking is still active
+    const booking = conversation.bookingId;
+    if (booking && !['confirmed', 'in_progress'].includes(booking.status)) {
       return res.status(400).json({ 
         message: 'Cannot send messages. Booking is completed or cancelled.',
         isActive: false
@@ -246,8 +269,9 @@ router.post('/upload-media', auth, upload.single('media'), async (req, res) => {
     }
 
     // Verify conversation exists and user is participant
-    const conversation = await Conversation.findById(conversationId)
-      .populate('relatedBooking');
+    const Chat = require('../models/Chat');
+    const conversation = await Chat.findById(conversationId)
+      .populate('bookingId');
     
     if (!conversation) {
       return res.status(404).json({ message: 'Conversation not found' });
@@ -259,6 +283,14 @@ router.post('/upload-media', auth, upload.single('media'), async (req, res) => {
 
     if (!isParticipant) {
       return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Check if conversation is active (only active conversations can send messages)
+    if (conversation.status !== 'active') {
+      return res.status(403).json({ 
+        message: 'Cannot send messages. Chat is not active. Booking must be accepted first.',
+        isActive: false
+      });
     }
 
     // Check if user has blocked or been blocked by the other participant
@@ -277,9 +309,9 @@ router.post('/upload-media', auth, upload.single('media'), async (req, res) => {
       return res.status(403).json({ message: 'Cannot send messages. You have been blocked by this user' });
     }
 
-    // Check if conversation is active
-    const booking = conversation.relatedBooking;
-    if (!['pending', 'confirmed', 'in_progress'].includes(booking.status)) {
+    // Check if booking is still active
+    const booking = conversation.bookingId;
+    if (booking && !['confirmed', 'in_progress'].includes(booking.status)) {
       return res.status(400).json({ 
         message: 'Cannot send messages. Booking is completed or cancelled.',
         isActive: false
@@ -317,6 +349,50 @@ router.post('/upload-media', auth, upload.single('media'), async (req, res) => {
     res.status(201).json(message);
   } catch (error) {
     console.error('Error uploading media:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Mark all messages in a conversation as read
+router.patch('/conversations/:conversationId/read', auth, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+
+    // Verify conversation exists and user is participant
+    const Chat = require('../models/Chat');
+    const conversation = await Chat.findById(conversationId);
+    
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    const isParticipant = conversation.participants.some(
+      participant => participant.toString() === req.user._id.toString()
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Mark all messages in this conversation where current user is receiver as read
+    const result = await Message.updateMany(
+      {
+        conversationId: conversationId,
+        receiverId: req.user._id,
+        senderId: { $ne: req.user._id }, // Don't mark own messages
+        isRead: false
+      },
+      {
+        $set: { isRead: true }
+      }
+    );
+
+    res.json({ 
+      message: 'Messages marked as read',
+      updatedCount: result.modifiedCount
+    });
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

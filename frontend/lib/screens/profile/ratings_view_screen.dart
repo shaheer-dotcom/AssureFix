@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
+import 'user_profile_view_screen.dart';
 
 class RatingsViewScreen extends StatefulWidget {
   final String userId;
@@ -164,76 +165,121 @@ class _RatingsViewScreenState extends State<RatingsViewScreen> {
   }
 
   Widget _buildRatingCard(Map<String, dynamic> rating) {
-    final stars = rating['stars'] as int;
-    final review = rating['review'] as String?;
-    final reviewerName = rating['reviewerName'] as String;
-    final createdAt = rating['createdAt'] as DateTime;
+    final stars = rating['stars'] as int? ?? 0;
+    final comment = rating['comment']?.toString() ?? '';
+    
+    // Get reviewer info from ratedBy field
+    final ratedBy = rating['ratedBy'] as Map<String, dynamic>?;
+    final reviewerProfile = ratedBy?['profile'] as Map<String, dynamic>?;
+    final reviewerName = reviewerProfile?['name']?.toString() ?? 
+                         ratedBy?['email']?.toString() ?? 
+                         'Anonymous';
+    final reviewerId = ratedBy?['_id']?.toString();
+    
+    // Parse date
+    final createdAtStr = rating['createdAt']?.toString();
+    final createdAt = createdAtStr != null ? DateTime.parse(createdAtStr) : DateTime.now();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: const Color(0xFF1565C0),
+      child: InkWell(
+        onTap: reviewerId != null
+            ? () {
+                // Navigate to reviewer's profile
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => UserProfileViewScreen(
+                      userId: reviewerId,
+                      userName: reviewerName,
+                    ),
+                  ),
+                );
+              }
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: const Color(0xFF1565C0),
+                    child: Text(
+                      reviewerName.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              reviewerName,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (reviewerId != null) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.chevron_right,
+                                size: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                            ],
+                          ],
+                        ),
+                        Text(
+                          _formatDate(createdAt),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: List.generate(5, (index) {
+                      return Icon(
+                        index < stars ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 20,
+                      );
+                    }),
+                  ),
+                ],
+              ),
+              if (comment.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Text(
-                    reviewerName.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    comment,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                      height: 1.4,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        reviewerName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        _formatDate(createdAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  children: List.generate(5, (index) {
-                    return Icon(
-                      index < stars ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: 20,
-                    );
-                  }),
-                ),
               ],
-            ),
-            if (review != null && review.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                review,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                  height: 1.4,
-                ),
-              ),
             ],
-          ],
+          ),
         ),
       ),
     );

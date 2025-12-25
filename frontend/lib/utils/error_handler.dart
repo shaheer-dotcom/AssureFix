@@ -48,7 +48,7 @@ class ErrorHandler {
     } else if (error is AuthException) {
       return error.message;
     } else if (error is SocketException) {
-      return 'Cannot connect to server. Please make sure the backend is running.';
+      return 'Cannot connect to server. Make sure:\n1. Backend is running\n2. Phone and PC are on same WiFi\n3. IP address is correct (192.168.100.7)';
     } else if (error is HttpException) {
       return 'Server error. Please try again later.';
     } else if (error is FormatException) {
@@ -59,8 +59,10 @@ class ErrorHandler {
       // Check for connection-related errors
       if (errorString.contains('Failed to fetch') || 
           errorString.contains('Connection refused') ||
-          errorString.contains('Failed host lookup')) {
-        return 'Cannot connect to server. Please make sure the backend is running.';
+          errorString.contains('Failed host lookup') ||
+          errorString.contains('Network is unreachable') ||
+          errorString.contains('Connection timed out')) {
+        return 'Cannot connect to server. Make sure:\n1. Backend is running\n2. Phone and PC are on same WiFi\n3. IP address is correct (192.168.100.7)';
       }
       
       // Remove "Exception: " prefix if present
@@ -74,8 +76,10 @@ class ErrorHandler {
       // Check for connection-related errors in any error type
       if (errorString.contains('Failed to fetch') || 
           errorString.contains('Connection refused') ||
-          errorString.contains('Failed host lookup')) {
-        return 'Cannot connect to server. Please make sure the backend is running.';
+          errorString.contains('Failed host lookup') ||
+          errorString.contains('Network is unreachable') ||
+          errorString.contains('Connection timed out')) {
+        return 'Cannot connect to server. Make sure:\n1. Backend is running\n2. Phone and PC are on same WiFi\n3. IP address is correct (192.168.100.7)';
       }
       
       return errorString;
@@ -87,7 +91,7 @@ class ErrorHandler {
     BuildContext context,
     String message, {
     VoidCallback? onRetry,
-    Duration duration = const Duration(seconds: 4),
+    Duration duration = const Duration(seconds: 5),
   }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

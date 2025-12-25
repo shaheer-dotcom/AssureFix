@@ -347,8 +347,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  border: Border.all(color: Colors.grey.shade300),
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? const Color(0xFF2C2C2C) 
+                      : Colors.grey.shade100,
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.grey.shade800 
+                        : Colors.grey.shade300,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -365,9 +371,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         children: [
                           Text(
                             _selectedUserType == 'customer' ? 'Customer' : 'Service Provider',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              color: Theme.of(context).brightness == Brightness.dark 
+                                  ? Colors.white 
+                                  : Colors.black87,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -377,7 +386,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 : 'I want to offer services',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey.shade600,
+                              color: Theme.of(context).brightness == Brightness.dark 
+                                  ? Colors.grey.shade400 
+                                  : Colors.grey.shade600,
                             ),
                           ),
                         ],
@@ -386,7 +397,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.blue.shade900.withValues(alpha: 0.3) 
+                            : Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -394,7 +407,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade700,
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.blue.shade300 
+                              : Colors.blue.shade700,
                         ),
                       ),
                     ),
@@ -406,7 +421,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 'Note: Account type cannot be changed. Create a new account to use a different role.',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade600,
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.grey.shade400 
+                      : Colors.grey.shade600,
                   fontStyle: FontStyle.italic,
                 ),
               ),

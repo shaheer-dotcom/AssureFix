@@ -8,11 +8,22 @@ class Booking {
   final String status;
   final double totalAmount;
   final int hoursBooked;
+  final String bookingType; // 'immediate' or 'reservation'
   final String? cancellationReason;
   final String? cancelledBy;
   final bool canCancel;
   final DateTime createdAt;
   final DateTime updatedAt;
+  
+  // Completion confirmation tracking
+  final String? completionInitiatedBy;
+  final DateTime? completionInitiatedAt;
+  final String? completionConfirmedBy;
+  final DateTime? completionConfirmedAt;
+  
+  // Rating tracking
+  final bool customerRated;
+  final bool providerRated;
   
   // Populated fields from backend
   final String? customerName;
@@ -29,11 +40,18 @@ class Booking {
     required this.status,
     required this.totalAmount,
     required this.hoursBooked,
+    this.bookingType = 'reservation',
     this.cancellationReason,
     this.cancelledBy,
     required this.canCancel,
     required this.createdAt,
     required this.updatedAt,
+    this.completionInitiatedBy,
+    this.completionInitiatedAt,
+    this.completionConfirmedBy,
+    this.completionConfirmedAt,
+    this.customerRated = false,
+    this.providerRated = false,
     this.customerName,
     this.providerName,
     this.serviceName,
@@ -87,6 +105,7 @@ class Booking {
       hoursBooked: (json['hoursBooked'] ?? 1) is int 
           ? json['hoursBooked'] 
           : int.tryParse(json['hoursBooked'].toString()) ?? 1,
+      bookingType: json['bookingType']?.toString() ?? 'reservation',
       cancellationReason: json['cancellationReason']?.toString(),
       cancelledBy: json['cancelledBy']?.toString(),
       canCancel: json['canCancel'] == true,
@@ -96,6 +115,16 @@ class Booking {
       updatedAt: DateTime.parse(
         json['updatedAt'] ?? DateTime.now().toIso8601String()
       ),
+      completionInitiatedBy: json['completionInitiatedBy']?.toString(),
+      completionInitiatedAt: json['completionInitiatedAt'] != null
+          ? DateTime.parse(json['completionInitiatedAt'])
+          : null,
+      completionConfirmedBy: json['completionConfirmedBy']?.toString(),
+      completionConfirmedAt: json['completionConfirmedAt'] != null
+          ? DateTime.parse(json['completionConfirmedAt'])
+          : null,
+      customerRated: json['customerRated'] == true,
+      providerRated: json['providerRated'] == true,
       customerName: extractName(json['customerId']),
       providerName: extractName(json['providerId']),
       serviceName: extractServiceName(json['serviceId']),

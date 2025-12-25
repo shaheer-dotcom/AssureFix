@@ -100,15 +100,32 @@ class ServiceProvider with ChangeNotifier {
     setError(null);
     
     try {
+      debugPrint('ServiceProvider: Deleting service $serviceId');
       await ApiService.deleteService(serviceId);
+      
+      debugPrint('ServiceProvider: Delete API call successful');
+      
       // Remove from local list
+      final removedCount = _services.length;
       _services.removeWhere((service) => service.id == serviceId);
+      debugPrint('ServiceProvider: Removed from list. Before: $removedCount, After: ${_services.length}');
+      
       setLoading(false);
       notifyListeners();
       return true;
     } catch (e) {
-      setError(e.toString());
+      debugPrint('ServiceProvider: Delete failed with error: ${e.toString()}');
+      String errorMessage = e.toString();
+      // Clean up the error message
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(11);
+      }
+      if (errorMessage.startsWith('ServerException: ')) {
+        errorMessage = errorMessage.substring(17);
+      }
+      setError(errorMessage);
       setLoading(false);
+      notifyListeners();
       return false;
     }
   }

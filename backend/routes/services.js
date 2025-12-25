@@ -55,7 +55,7 @@ router.post('/', auth, async (req, res) => {
     });
 
     await service.save();
-    await service.populate('providerId', 'profile.name profile.phoneNumber customerRating serviceProviderRating');
+    await service.populate('providerId', 'profile.name profile.phoneNumber profile.profilePicture customerRating serviceProviderRating');
 
     console.log('Service created successfully:', service._id);
 
@@ -111,7 +111,7 @@ router.get('/', async (req, res) => {
     }
 
     const services = await Service.find(query)
-      .populate('providerId', 'profile.name profile.phoneNumber customerRating serviceProviderRating')
+      .populate('providerId', 'profile.name profile.phoneNumber profile.profilePicture customerRating serviceProviderRating')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -150,7 +150,7 @@ router.get('/', async (req, res) => {
 router.get('/my-services', auth, async (req, res) => {
   try {
     const services = await Service.find({ providerId: req.user._id })
-      .populate('providerId', 'profile.name profile.phoneNumber customerRating serviceProviderRating')
+      .populate('providerId', 'profile.name profile.phoneNumber profile.profilePicture customerRating serviceProviderRating')
       .sort({ createdAt: -1 });
 
     res.json(services);
@@ -164,7 +164,7 @@ router.get('/my-services', auth, async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const service = await Service.findById(req.params.id)
-      .populate('providerId', 'profile.name profile.phoneNumber customerRating serviceProviderRating');
+      .populate('providerId', 'profile.name profile.phoneNumber profile.profilePicture customerRating serviceProviderRating');
 
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
@@ -194,7 +194,7 @@ router.put('/:id', auth, async (req, res) => {
     // Update service
     Object.assign(service, req.body);
     await service.save();
-    await service.populate('providerId', 'profile.name profile.phoneNumber customerRating serviceProviderRating');
+    await service.populate('providerId', 'profile.name profile.phoneNumber profile.profilePicture customerRating serviceProviderRating');
 
     console.log('Service updated successfully:', service._id);
 
@@ -249,7 +249,7 @@ router.patch('/:id/toggle-status', auth, async (req, res) => {
 
     service.isActive = !service.isActive;
     await service.save();
-    await service.populate('providerId', 'profile.name profile.phoneNumber customerRating serviceProviderRating');
+    await service.populate('providerId', 'profile.name profile.phoneNumber profile.profilePicture customerRating serviceProviderRating');
 
     console.log('Service status toggled:', service._id, 'Active:', service.isActive);
 

@@ -230,11 +230,18 @@ class _ServiceProviderHomeScreenState extends State<ServiceProviderHomeScreen> {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark 
+              ? const Color(0xFF2C2C2C) 
+              : Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: Theme.of(context).brightness == Brightness.dark 
+              ? Border.all(color: Colors.grey.shade800) 
+              : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.1),
+              color: Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.black26 
+                  : Colors.grey.withValues(alpha: 0.1),
               spreadRadius: 1,
               blurRadius: 6,
               offset: const Offset(0, 3),
@@ -264,10 +271,13 @@ class _ServiceProviderHomeScreenState extends State<ServiceProviderHomeScreen> {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   height: 1.2,
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.white 
+                      : Colors.black87,
                 ),
               ),
             ),
@@ -534,13 +544,17 @@ class _ServiceProviderHomeScreenState extends State<ServiceProviderHomeScreen> {
       // Show loading
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Completing booking...')),
+          const SnackBar(
+            content: Text('Completing booking...'),
+            duration: Duration(seconds: 2),
+          ),
         );
       }
 
       // Submit rating
+      // Note: Backend automatically marks booking as completed when rating is submitted
       await ApiService.createRating({
-        'ratedUser': booking.customerId,
+        'ratedUserId': booking.customerId,
         'ratingType': 'customer',
         'stars': stars,
         'comment': comment,
@@ -548,10 +562,7 @@ class _ServiceProviderHomeScreenState extends State<ServiceProviderHomeScreen> {
         'relatedService': booking.serviceId,
       });
 
-      // Update booking status to completed
-      await ApiService.updateBookingStatus(booking.id, 'completed');
-
-      // Reload bookings
+      // Reload bookings to reflect the changes
       await _loadActiveBookings();
 
       if (mounted) {
@@ -559,6 +570,7 @@ class _ServiceProviderHomeScreenState extends State<ServiceProviderHomeScreen> {
           const SnackBar(
             content: Text('Booking completed and rating submitted successfully!'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -568,6 +580,7 @@ class _ServiceProviderHomeScreenState extends State<ServiceProviderHomeScreen> {
           SnackBar(
             content: Text('Error: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

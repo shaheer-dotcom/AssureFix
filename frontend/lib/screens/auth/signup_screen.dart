@@ -32,9 +32,23 @@ class _SignupScreenState extends State<SignupScreen> {
       appBar: AppBar(
         title: const Text('Create Account'),
       ),
-      body: SafeArea(
-        child: Consumer<AuthProvider>(
-          builder: (context, authProvider, child) {
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF1565C0).withValues(alpha: 0.05),
+              const Color(0xFF42A5F5).withValues(alpha: 0.05),
+              Colors.white,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
             return SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Form(
@@ -218,7 +232,8 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
             );
-          },
+            },
+          ),
         ),
       ),
     );

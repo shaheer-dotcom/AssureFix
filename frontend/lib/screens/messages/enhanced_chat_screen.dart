@@ -86,16 +86,17 @@ class _EnhancedChatScreenState extends State<EnhancedChatScreen> {
   Future<void> _markMessagesAsRead() async {
     try {
       final token = await TokenManager.getToken();
-      for (var message in _messages) {
-        if (message['receiverId'] == _currentUserId && !message['isRead']) {
-          await http.patch(
-            Uri.parse('${Constants.apiUrl}/messages/${message['_id']}/read'),
-            headers: {'Authorization': 'Bearer $token'},
-          );
-        }
-      }
+      // Mark all messages in this conversation as read
+      await http.patch(
+        Uri.parse('${Constants.apiUrl}/messages/conversations/${widget.conversationId}/read'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
     } catch (e) {
       // Ignore errors
+      print('Error marking messages as read: $e');
     }
   }
 
@@ -348,7 +349,7 @@ class _EnhancedChatScreenState extends State<EnhancedChatScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             spreadRadius: 1,
             blurRadius: 3,
           ),

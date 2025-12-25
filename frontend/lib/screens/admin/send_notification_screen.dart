@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../utils/theme.dart';
+import '../../widgets/glass_widgets.dart';
 
 class SendNotificationScreen extends StatefulWidget {
   final String adminToken;
@@ -183,12 +185,8 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Send Notification'),
-        backgroundColor: const Color(0xFF2E7D32),
-        foregroundColor: Colors.white,
-      ),
+    return GlassScaffold(
+      title: 'Send Notification',
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -197,311 +195,233 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Notification Type Selection
-              Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Notification Type',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: const Text('Broadcast'),
-                              subtitle: const Text('Send to multiple users'),
-                              value: 'broadcast',
-                              groupValue: _notificationType,
-                              onChanged: (value) {
-                                setState(() {
-                                  _notificationType = value!;
-                                  _selectedUserId = null;
-                                  _selectedUserName = null;
-                                  _searchResults = [];
-                                });
-                              },
-                            ),
-                          ),
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: const Text('Individual'),
-                              subtitle: const Text('Send to one user'),
-                              value: 'individual',
-                              groupValue: _notificationType,
-                              onChanged: (value) {
-                                setState(() {
-                                  _notificationType = value!;
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+              GlassFormCard(
+                title: 'Notification Type',
+                children: [
+                  GlassRadioOption<String>(
+                    title: 'Broadcast',
+                    subtitle: 'Send to multiple users',
+                    value: 'broadcast',
+                    groupValue: _notificationType,
+                    onChanged: (value) {
+                      setState(() {
+                        _notificationType = value!;
+                        _selectedUserId = null;
+                        _selectedUserName = null;
+                        _searchResults = [];
+                      });
+                    },
                   ),
-                ),
+                  GlassRadioOption<String>(
+                    title: 'Individual',
+                    subtitle: 'Send to one user',
+                    value: 'individual',
+                    groupValue: _notificationType,
+                    onChanged: (value) {
+                      setState(() {
+                        _notificationType = value!;
+                      });
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 
               // Target Audience (for broadcast)
               if (_notificationType == 'broadcast') ...[
-                Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Target Audience',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                GlassFormCard(
+                  title: 'Target Audience',
+                  children: [
+                    GlassDropdown<String>(
+                      labelText: 'Select Audience',
+                      value: _targetAudience,
+                      prefixIcon: Icons.people,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'all',
+                          child: Text('All Users'),
                         ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: _targetAudience,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.people),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'all',
-                              child: Text('All Users'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'customers',
-                              child: Text('All Customers'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'providers',
-                              child: Text('All Service Providers'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _targetAudience = value!;
-                            });
-                          },
+                        DropdownMenuItem(
+                          value: 'customers',
+                          child: Text('All Customers'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'providers',
+                          child: Text('All Service Providers'),
                         ),
                       ],
+                      onChanged: (value) {
+                        setState(() {
+                          _targetAudience = value!;
+                        });
+                      },
                     ),
-                  ),
+                  ],
                 ),
                 const SizedBox(height: 16),
               ],
 
               // User Selection (for individual)
               if (_notificationType == 'individual') ...[
-                Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Select User',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        
-                        // Selected user display
-                        if (_selectedUserId != null) ...[
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green.shade200),
+                GlassFormCard(
+                  title: 'Select User',
+                  children: [
+                    // Selected user display
+                    if (_selectedUserId != null) ...[
+                      GlassContainer(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 20,
+                              ),
                             ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.check_circle, color: Colors.green),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _selectedUserName ?? 'User selected',
-                                    style: const TextStyle(fontWeight: FontWeight.w500),
-                                  ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _selectedUserName ?? 'User selected',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.close),
-                                  onPressed: () {
-                                    setState(() {
-                                      _selectedUserId = null;
-                                      _selectedUserName = null;
-                                    });
-                                  },
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                        
-                        // Search field
-                        TextField(
-                          decoration: const InputDecoration(
-                            labelText: 'Search by name, email, or phone',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.search),
-                          ),
-                          onChanged: _searchUsers,
-                        ),
-                        
-                        // Search results
-                        if (_isSearching)
-                          const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator()),
-                          )
-                        else if (_searchResults.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            constraints: const BoxConstraints(maxHeight: 200),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: _searchResults.length,
-                              itemBuilder: (context, index) {
-                                final user = _searchResults[index];
-                                final profile = user['profile'] ?? {};
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    child: Text(
-                                      (profile['name'] ?? 'U')[0].toUpperCase(),
-                                    ),
-                                  ),
-                                  title: Text(profile['name'] ?? 'Unknown'),
-                                  subtitle: Text(
-                                    '${user['email']}\n${profile['userType'] ?? 'N/A'}',
-                                  ),
-                                  isThreeLine: true,
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedUserId = user['_id'];
-                                      _selectedUserName = 
-                                          '${profile['name']} (${user['email']})';
-                                      _searchResults = [];
-                                    });
-                                  },
-                                );
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 20),
+                              onPressed: () {
+                                setState(() {
+                                  _selectedUserId = null;
+                                  _selectedUserName = null;
+                                });
                               },
                             ),
-                          ),
-                        ],
-                      ],
+                          ],
+                        ),
+                      ),
+                    ],
+                    
+                    // Search field
+                    GlassTextField(
+                      hintText: 'Search by name, email, or phone',
+                      prefixIcon: Icons.search,
+                      onChanged: _searchUsers,
                     ),
-                  ),
+                    
+                    // Search results
+                    if (_isSearching)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppTheme.primaryBlue,
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (_searchResults.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      GlassContainer(
+                        padding: EdgeInsets.zero,
+                        child: Container(
+                          constraints: const BoxConstraints(maxHeight: 200),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _searchResults.length,
+                            itemBuilder: (context, index) {
+                              final user = _searchResults[index];
+                              final profile = user['profile'] ?? {};
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: AppTheme.primaryBlue,
+                                  child: Text(
+                                    (profile['name'] ?? 'U')[0].toUpperCase(),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                title: Text(
+                                  profile['name'] ?? 'Unknown',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '${user['email']}\n${profile['userType'] ?? 'N/A'}',
+                                ),
+                                isThreeLine: true,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedUserId = user['_id'];
+                                    _selectedUserName = 
+                                        '${profile['name']} (${user['email']})';
+                                    _searchResults = [];
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 16),
               ],
 
               // Notification Content
-              Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Notification Content',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Title field
-                      TextFormField(
-                        controller: _titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Title',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.title),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a title';
-                          }
-                          return null;
-                        },
-                        maxLength: 100,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Message field
-                      TextFormField(
-                        controller: _messageController,
-                        decoration: const InputDecoration(
-                          labelText: 'Message',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.message),
-                          alignLabelWithHint: true,
-                        ),
-                        maxLines: 5,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a message';
-                          }
-                          return null;
-                        },
-                        maxLength: 500,
-                      ),
-                    ],
+              GlassFormCard(
+                title: 'Notification Content',
+                children: [
+                  // Title field
+                  GlassTextField(
+                    controller: _titleController,
+                    labelText: 'Title',
+                    prefixIcon: Icons.title,
+                    maxLength: 100,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a title';
+                      }
+                      return null;
+                    },
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  
+                  // Message field
+                  GlassTextField(
+                    controller: _messageController,
+                    labelText: 'Message',
+                    prefixIcon: Icons.message,
+                    maxLines: 5,
+                    maxLength: 500,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a message';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
 
               // Send button
               SizedBox(
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _sendNotification,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text(
-                          'Send Notification',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                child: GlassButton(
+                  text: 'Send Notification',
+                  icon: Icons.send,
+                  onPressed: _sendNotification,
+                  isLoading: _isLoading,
                 ),
               ),
             ],

@@ -56,9 +56,10 @@ class ConfirmationDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () {
-            Navigator.of(context).pop();
             if (onCancel != null) {
               onCancel!();
+            } else {
+              Navigator.of(context).pop(false);
             }
           },
           child: Text(
@@ -68,7 +69,6 @@ class ConfirmationDialog extends StatelessWidget {
         ),
         ElevatedButton(
           onPressed: () {
-            Navigator.of(context).pop();
             onConfirm();
           },
           style: ElevatedButton.styleFrom(

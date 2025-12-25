@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../config/api_config.dart';
 import 'users_management_screen.dart';
 import 'reports_management_screen.dart';
 import 'send_notification_screen.dart';
@@ -26,7 +26,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String? _error;
 
   String get _baseUrl {
-    return kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000';
+    return ApiConfig.baseUrlWithoutApi;
   }
 
   @override
@@ -177,7 +177,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               Text(
                                 'Manage your AssureFix platform',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 16,
                                 ),
                               ),
@@ -282,9 +282,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 1.5,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          childAspectRatio: 1.3,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
         ),
         itemCount: stats.length,
         itemBuilder: (context, index) {
@@ -304,15 +304,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   children: [
                     Icon(
                       stat['icon'] as IconData,
-                      size: 48,
+                      size: 40,
                       color: stat['color'] as Color,
                     ),
-                    const SizedBox(height: 8),
                     const SizedBox(height: 12),
                     Text(
                       stat['title'] as String,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
@@ -382,18 +381,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.all(16),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             leading: Container(
-              width: 50,
-              height: 50,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: (option['color'] as Color).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(25),
+                color: (option['color'] as Color).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(
                 option['icon'] as IconData,
                 color: option['color'] as Color,
-                size: 28,
+                size: 24,
               ),
             ),
             title: Text(
@@ -403,13 +402,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            subtitle: Text(
-              option['subtitle'] as String,
-              style: TextStyle(
-                color: Colors.grey.shade600,
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                option['subtitle'] as String,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                ),
               ),
             ),
-            trailing: const Icon(Icons.arrow_forward_ios),
+            trailing: Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey.shade400,
+            ),
             onTap: option['onTap'] as VoidCallback,
           ),
         );

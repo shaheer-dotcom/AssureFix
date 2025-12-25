@@ -341,10 +341,23 @@ PATCH  /api/admin/reports/:id
 
 ## 📚 Documentation
 
+### User Guides
 - **[ADMIN_SETUP_GUIDE.md](ADMIN_SETUP_GUIDE.md)** - Complete admin portal setup
-- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
 - **[SETUP.md](SETUP.md)** - Development environment setup
-- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Project overview
+- **[QUICK_START.md](QUICK_START.md)** - Quick start guide
+
+### Technical Documentation
+- **[backend/API_DOCUMENTATION.md](backend/API_DOCUMENTATION.md)** - Complete API reference
+- **[backend/ENVIRONMENT_VARIABLES.md](backend/ENVIRONMENT_VARIABLES.md)** - Environment configuration
+- **[backend/AGORA_SETUP_GUIDE.md](backend/AGORA_SETUP_GUIDE.md)** - Voice call setup
+- **[backend/DOCUMENTATION_INDEX.md](backend/DOCUMENTATION_INDEX.md)** - Documentation index
+
+### Deployment
+- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verification
+- **[backend/scripts/migrations/](backend/scripts/migrations/)** - Database migrations
+
+### Project Information
+- **[.kiro/specs/enhanced-messaging-system/](kiro/specs/enhanced-messaging-system/)** - Feature specifications
 
 ---
 

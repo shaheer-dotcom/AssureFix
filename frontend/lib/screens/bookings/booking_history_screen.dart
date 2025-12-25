@@ -334,7 +334,10 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Thank you for your rating!')),
+                const SnackBar(
+                  content: Text('Thank you for your rating!'),
+                  duration: Duration(seconds: 3),
+                ),
               );
             },
             child: const Text('Submit Rating'),

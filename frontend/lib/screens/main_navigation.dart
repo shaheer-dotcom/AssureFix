@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/call_notification_service.dart';
 import 'dashboard/unified_dashboard.dart';
 import 'messages/enhanced_messages_screen.dart';
 import 'profile/profile_screen.dart';
@@ -23,6 +24,15 @@ class _MainNavigationState extends State<MainNavigation> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Initialize call notification service with context
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      CallNotificationService().initialize(context);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
@@ -42,17 +52,29 @@ class _MainNavigationState extends State<MainNavigation> {
                 _currentIndex = index;
               });
             },
-            selectedItemColor: const Color(0xFF1565C0),
-            unselectedItemColor: Colors.grey.shade600,
-            backgroundColor: Colors.white,
+            selectedItemColor: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.white 
+                : const Color(0xFF1565C0),
+            unselectedItemColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white60
+                : Colors.grey.shade600,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black
+                : Colors.white,
             elevation: 8,
-            selectedLabelStyle: const TextStyle(
+            selectedLabelStyle: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 12,
+              color: Theme.of(context).brightness == Brightness.dark 
+                  ? Colors.white 
+                  : Colors.black87,
             ),
-            unselectedLabelStyle: const TextStyle(
+            unselectedLabelStyle: TextStyle(
               fontWeight: FontWeight.w400,
               fontSize: 12,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white60
+                  : Colors.grey.shade600,
             ),
             items: [
               BottomNavigationBarItem(

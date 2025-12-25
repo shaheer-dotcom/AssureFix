@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/theme.dart';
+import '../../main.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -49,19 +51,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF1565C0).withValues(alpha: 0.05),
-              const Color(0xFF42A5F5).withValues(alpha: 0.05),
-              Colors.white,
-            ],
-          ),
-        ),
+    return GradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SizedBox(
+          width: double.infinity,
+          height: double.infinity,
         child: SafeArea(
           child: Consumer<AuthProvider>(
             builder: (context, authProvider, child) {
@@ -142,122 +137,52 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                           const SizedBox(height: 48),
 
-                          // Email field with card
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              decoration: InputDecoration(
-                                labelText: 'Email',
-                                hintText: 'Enter your email',
-                                prefixIcon: Container(
-                                  margin: const EdgeInsets.all(12),
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1565C0).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.email, color: Color(0xFF1565C0), size: 20),
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                              ),
-                              onTap: () {
-                                if (authProvider.error != null) {
-                                  authProvider.clearError();
-                                }
-                              },
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your email';
-                                }
-                                if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value)) {
-                                  return 'Please enter a valid email';
-                                }
-                                return null;
-                              },
-                            ),
+                          // Email field with glass effect
+                          GlassTextField(
+                            controller: _emailController,
+                            labelText: 'Email',
+                            hintText: 'Enter your email',
+                            prefixIcon: Icons.email,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your email';
+                              }
+                              if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value)) {
+                                return 'Please enter a valid email';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 20),
 
-                          // Password field with card
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: TextFormField(
-                              controller: _passwordController,
-                              obscureText: _obscurePassword,
-                              decoration: InputDecoration(
-                                labelText: 'Password',
-                                hintText: 'Enter your password',
-                                prefixIcon: Container(
-                                  margin: const EdgeInsets.all(12),
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1565C0).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.lock, color: Color(0xFF1565C0), size: 20),
-                                ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscurePassword = !_obscurePassword;
-                                    });
-                                  },
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          // Password field with glass effect
+                          GlassTextField(
+                            controller: _passwordController,
+                            labelText: 'Password',
+                            hintText: 'Enter your password',
+                            prefixIcon: Icons.lock,
+                            obscureText: _obscurePassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                color: AppTheme.primaryBlue,
                               ),
-                              onTap: () {
-                                if (authProvider.error != null) {
-                                  authProvider.clearError();
-                                }
-                              },
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
-                                }
-                                if (value.length < 6) {
-                                  return 'Password must be at least 6 characters';
-                                }
-                                return null;
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
                               },
                             ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your password';
+                              }
+                              if (value.length < 6) {
+                                return 'Password must be at least 6 characters';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 28),
 
@@ -310,64 +235,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               },
                             ),
 
-                          // Login button with gradient
-                          Container(
-                            height: 56,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF1565C0).withValues(alpha: 0.4),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: authProvider.isLoading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: authProvider.isLoading
-                                  ? const SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Login',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
+                          // Login button with glass effect
+                          SizedBox(
+                            width: double.infinity,
+                            child: GlassButton(
+                              text: 'Login',
+                              icon: Icons.login,
+                              onPressed: _login,
+                              isLoading: authProvider.isLoading,
                             ),
                           ),
                           const SizedBox(height: 24),
 
-                          // Signup link with card
-                          Container(
+                          // Signup link with glass effect
+                          GlassContainer(
                             padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.grey.shade200,
-                                width: 1.5,
-                              ),
-                            ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -376,6 +258,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   style: TextStyle(
                                     color: Colors.grey.shade700,
                                     fontSize: 15,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 TextButton(
@@ -413,6 +296,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -422,9 +306,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.login(
+    final success = await authProvider.login(
       _emailController.text.trim(),
       _passwordController.text,
     );
+    
+    if (success && mounted) {
+      print('Login successful, forcing navigation...');
+      
+      // Force navigation by replacing the entire app with a new instance
+      // This ensures the AuthWrapper rebuilds with the new auth state
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const ServiceHubApp()),
+        (route) => false,
+      );
+    }
   }
 }

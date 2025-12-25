@@ -6,6 +6,8 @@ import '../../models/service.dart';
 import '../../widgets/empty_state_widget.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/error_handler.dart';
+import '../../utils/theme.dart';
+import '../../widgets/glass_widgets.dart';
 import 'service_detail_screen.dart';
 
 class SearchServicesScreen extends StatefulWidget {
@@ -63,36 +65,22 @@ class _SearchServicesScreenState extends State<SearchServicesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Search Services',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+    return GlassScaffold(
+      title: 'Search Services',
+      actions: [
+        if (!_showSearchForm)
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'New Search',
+            onPressed: () {
+              setState(() {
+                _showSearchForm = true;
+                _serviceNameTag = null;
+                _areaTag = null;
+              });
+            },
           ),
-        ),
-        actions: [
-          if (!_showSearchForm)
-            IconButton(
-              icon: const Icon(Icons.search),
-              tooltip: 'New Search',
-              onPressed: () {
-                setState(() {
-                  _showSearchForm = true;
-                  _serviceNameTag = null;
-                  _areaTag = null;
-                });
-              },
-            ),
-        ],
-      ),
+      ],
       body: Consumer<ServiceProvider>(
         builder: (context, serviceProvider, child) {
           return Column(
@@ -100,190 +88,125 @@ class _SearchServicesScreenState extends State<SearchServicesScreen> {
               // Search Form - only show if _showSearchForm is true
               if (_showSearchForm)
                 Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.white, Colors.blue.shade50],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
                       // Service Name Field
-                      TextField(
+                      GlassTextField(
                         controller: _serviceNameController,
-                        textCapitalization: TextCapitalization.words,
-                        decoration: InputDecoration(
-                          labelText: 'Service Name Tag',
-                          hintText: 'e.g., Plumber, Electrician',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
-                          ),
-                          prefixIcon: const Icon(Icons.search, color: Color(0xFF1565C0)),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.add_circle, color: Color(0xFF1565C0)),
-                            onPressed: _addServiceNameTag,
-                          ),
+                        labelText: 'Service Name Tag',
+                        hintText: 'e.g., Plumber, Electrician',
+                        prefixIcon: Icons.search,
+                        suffixIcon: IconButton(
+                          icon: Icon(Icons.add_circle, color: AppTheme.primaryBlue),
+                          onPressed: _addServiceNameTag,
                         ),
-                        onSubmitted: (_) => _addServiceNameTag(),
+                        onChanged: (_) {},
                       ),
                       if (_serviceNameTag != null) ...[
                         const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _serviceNameTag!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [AppTheme.primaryBlue, AppTheme.accentBlue],
                                 ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: _removeServiceNameTag,
-                                child: const Icon(Icons.close, color: Colors.white, size: 18),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _serviceNameTag!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: _removeServiceNameTag,
+                                    child: const Icon(Icons.close, color: Colors.white, size: 18),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                       const SizedBox(height: 20),
                       // Area Field
-                      TextField(
+                      GlassTextField(
                         controller: _areaController,
-                        textCapitalization: TextCapitalization.words,
-                        decoration: InputDecoration(
-                          labelText: 'Area Location Tag',
-                          hintText: 'e.g., Gulshan, DHA, Clifton',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 2),
-                          ),
-                          prefixIcon: const Icon(Icons.location_on, color: Color(0xFF4CAF50)),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.add_circle, color: Color(0xFF4CAF50)),
-                            onPressed: _addAreaTag,
-                          ),
+                        labelText: 'Area Location Tag',
+                        hintText: 'e.g., Gulshan, DHA, Clifton',
+                        prefixIcon: Icons.location_on,
+                        suffixIcon: IconButton(
+                          icon: Icon(Icons.add_circle, color: Colors.green.shade600),
+                          onPressed: _addAreaTag,
                         ),
-                        onSubmitted: (_) => _addAreaTag(),
+                        onChanged: (_) {},
                       ),
                       if (_areaTag != null) ...[
                         const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _areaTag!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.green.shade600, Colors.green.shade400],
                                 ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.green.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: _removeAreaTag,
-                                child: const Icon(Icons.close, color: Colors.white, size: 18),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _areaTag!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: _removeAreaTag,
+                                    child: const Icon(Icons.close, color: Colors.white, size: 18),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 24),
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.green.withOpacity(0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
                             ),
                           ],
                         ),
-                        child: ElevatedButton(
-                          onPressed: serviceProvider.isLoading ? null : _searchServices,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: serviceProvider.isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : const Text(
-                                  'Find Services',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                      ],
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: GlassButton(
+                          text: 'Find Services',
+                          icon: Icons.search,
+                          onPressed: _searchServices,
+                          isLoading: serviceProvider.isLoading,
+                          color: Colors.green.shade600,
                         ),
                       ),
                     ],
@@ -337,152 +260,189 @@ class _SearchServicesScreenState extends State<SearchServicesScreen> {
   }
 
   Widget _buildServiceCard(Service service) {
-    return Card(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Get provider rating from providerInfo
+    final providerRating = service.providerInfo?['serviceProviderRating'];
+    final averageRating = providerRating?['average']?.toDouble() ?? 0.0;
+    final ratingCount = providerRating?['count'] ?? 0;
+
+    return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ServiceDetailScreen(service: service),
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          service.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          service.description,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ServiceDetailScreen(service: service),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '₹${service.price.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontSize: 16,
+                        service.name,
+                        style: TextStyle(
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
+                          color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star, color: Colors.amber, size: 16),
-                          SizedBox(width: 4),
-                          Text(
-                            '0.0',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
+                      Text(
+                        service.description,
+                        style: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          fontSize: 14,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        ...service.areaTags.take(3).map((tag) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                size: 12,
-                                color: Colors.blue.shade700,
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                tag,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.blue.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )),
-                        if (service.areaTags.length > 3)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '+${service.areaTags.length - 3}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      service.category,
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '₹${service.price.toStringAsFixed(0)}',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
+                        color: isDark ? Colors.green.shade400 : Colors.green.shade700,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          averageRating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          ' ($ratingCount)',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Provider name
+            Row(
+              children: [
+                Icon(
+                  Icons.person,
+                  size: 14,
+                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  service.providerName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      ...service.areaTags.take(3).map((tag) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              size: 12,
+                              color: Colors.blue.shade700,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              tag,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                      if (service.areaTags.length > 3)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '+${service.areaTags.length - 3}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    service.category,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

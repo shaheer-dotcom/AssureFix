@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/report_dialog.dart';
+import '../../widgets/cached_image_widget.dart';
+import '../../config/api_config.dart';
+import 'ratings_view_screen.dart';
 
 class UserProfileViewScreen extends StatefulWidget {
   final String userId;
@@ -21,14 +23,13 @@ class UserProfileViewScreen extends StatefulWidget {
 
 class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
   Map<String, dynamic>? _userProfile;
-  List<dynamic> _services = [];
   bool _isLoading = true;
   String? _error;
   bool _isBlocked = false;
   bool _isBlockActionLoading = false;
 
   String get _baseUrl {
-    return kIsWeb ? 'http://localhost:5000' : 'http://10.0.2.2:5000';
+    return ApiConfig.baseUrlWithoutApi;
   }
 
   @override
@@ -60,29 +61,13 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
         if (profileResponse.statusCode == 200) {
           final profileData = json.decode(profileResponse.body);
           
-          // Get user's services if they're a provider
-          List<dynamic> services = [];
-          if (profileData['profile']?['userType'] == 'service_provider') {
-            final servicesResponse = await http.get(
-              Uri.parse('$_baseUrl/api/services?providerId=${widget.userId}'),
-              headers: {
-                'Authorization': 'Bearer $token',
-                'Content-Type': 'application/json',
-              },
-            );
-
-            if (servicesResponse.statusCode == 200) {
-              final servicesData = json.decode(servicesResponse.body);
-              services = servicesData['services'] ?? servicesData ?? [];
-            }
-          }
+          // Services section removed
 
           // Check if user is blocked
           await _checkIfBlocked();
 
           setState(() {
             _userProfile = profileData;
-            _services = services;
             _isLoading = false;
           });
         } else {
@@ -247,6 +232,47 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
     }
   }
 
+  Widget _buildBlockedBanner() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        border: Border.all(color: Colors.red.shade300, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.block, color: Colors.red.shade700, size: 32),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'You have blocked this user',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You cannot send messages or see their services. Unblock to interact.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.red.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showBlockConfirmation() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -356,14 +382,11 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
                   child: Column(
                     children: [
                       _buildProfileHeader(),
+                      if (_isBlocked) _buildBlockedBanner(),
                       const SizedBox(height: 16),
                       _buildContactInfo(),
                       const SizedBox(height: 16),
                       _buildRatingInfo(),
-                      if (_services.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        _buildServicesSection(),
-                      ],
                     ],
                   ),
                 ),
@@ -374,8 +397,12 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
     final profile = _userProfile?['profile'] ?? {};
     final name = profile['name'] ?? widget.userName;
     final userType = profile['userType'] ?? 'customer';
+    
+    // Show only relevant rating based on user type
+    final isProvider = userType == 'service_provider';
     final customerRating = _userProfile?['customerRating'] ?? {};
     final providerRating = _userProfile?['serviceProviderRating'] ?? {};
+    final displayRating = isProvider ? providerRating : customerRating;
 
     return Container(
       width: double.infinity,
@@ -388,7 +415,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -396,17 +423,11 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
       ),
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 50,
+          AvatarWidget(
+            imageUrl: profile['profilePicture'],
+            name: name,
+            size: 100,
             backgroundColor: Colors.white,
-            child: Text(
-              name[0].toUpperCase(),
-              style: const TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1565C0),
-              ),
-            ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -421,7 +442,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -436,23 +457,11 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildRatingBadge(
-                'Customer',
-                customerRating['average']?.toDouble() ?? 0.0,
-                customerRating['count'] ?? 0,
-              ),
-              if (userType == 'service_provider') ...[
-                const SizedBox(width: 16),
-                _buildRatingBadge(
-                  'Provider',
-                  providerRating['average']?.toDouble() ?? 0.0,
-                  providerRating['count'] ?? 0,
-                ),
-              ],
-            ],
+          // Show only relevant rating badge
+          _buildRatingBadge(
+            isProvider ? 'Provider' : 'Customer',
+            displayRating['average']?.toDouble() ?? 0.0,
+            displayRating['count'] ?? 0,
           ),
         ],
       ),
@@ -463,7 +472,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -537,6 +546,13 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
     final providerRating = _userProfile?['serviceProviderRating'] ?? {};
     final userType = _userProfile?['profile']?['userType'] ?? 'customer';
 
+    // Show only relevant rating based on user type
+    final isProvider = userType == 'service_provider';
+    final displayRating = isProvider ? providerRating : customerRating;
+    final displayTitle = isProvider ? 'Service Provider Rating' : 'Customer Rating';
+    final displayColor = isProvider ? Colors.orange : Colors.blue;
+    final ratingType = isProvider ? 'service_provider' : 'customer';
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Padding(
@@ -551,29 +567,21 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap on the rating to see detailed reviews',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+            ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildRatingCard(
-                    'As Customer',
-                    customerRating['average']?.toDouble() ?? 0.0,
-                    customerRating['count'] ?? 0,
-                    Colors.blue,
-                  ),
-                ),
-                if (userType == 'service_provider') ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildRatingCard(
-                      'As Provider',
-                      providerRating['average']?.toDouble() ?? 0.0,
-                      providerRating['count'] ?? 0,
-                      Colors.orange,
-                    ),
-                  ),
-                ],
-              ],
+            _buildRatingCard(
+              displayTitle,
+              displayRating['average']?.toDouble() ?? 0.0,
+              displayRating['count'] ?? 0,
+              displayColor,
+              ratingType,
             ),
           ],
         ),
@@ -582,192 +590,78 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
   }
 
   Widget _buildRatingCard(
-      String title, double rating, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.star, color: Colors.amber, size: 20),
-              const SizedBox(width: 4),
-              Text(
-                rating.toStringAsFixed(1),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+      String title, double rating, int count, Color color, String ratingType) {
+    return InkWell(
+      onTap: count > 0
+          ? () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RatingsViewScreen(
+                    userId: widget.userId,
+                    ratingType: ratingType,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$count reviews',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildServicesSection() {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+              );
+            }
+          : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'Services Offered',
-                  style: TextStyle(
-                    fontSize: 18,
+                const Icon(Icons.star, color: Colors.amber, size: 20),
+                const SizedBox(width: 4),
+                Text(
+                  rating.toStringAsFixed(1),
+                  style: const TextStyle(
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1565C0),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${_services.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _services.length,
-              separatorBuilder: (context, index) => const Divider(height: 24),
-              itemBuilder: (context, index) {
-                final service = _services[index];
-                return _buildServiceItem(service);
-              },
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$count reviews',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                if (count > 0) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ],
+              ],
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildServiceItem(Map<String, dynamic> service) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1565C0).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.build,
-            color: Color(0xFF1565C0),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                service['serviceName'] ?? 'Service',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                service['category'] ?? 'Category',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.location_on,
-                      size: 14, color: Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                  Text(
-                    service['area'] ?? 'Location',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '\$${service['price'] ?? 0}',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2E7D32),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: service['isActive'] == true
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                service['isActive'] == true ? 'Active' : 'Inactive',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: service['isActive'] == true
-                      ? Colors.green.shade700
-                      : Colors.grey.shade700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 

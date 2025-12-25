@@ -54,6 +54,74 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    // If related to a booking, verify booking exists and user is involved
+    if (relatedBooking) {
+      const Booking = require('../models/Booking');
+      const booking = await Booking.findById(relatedBooking);
+      
+      if (!booking) {
+        return res.status(404).json({ message: 'Booking not found' });
+      }
+
+      // Allow rating for confirmed, in_progress, or completed bookings
+      // This allows users to rate when marking as complete
+      if (!['confirmed', 'in_progress', 'completed'].includes(booking.status)) {
+        return res.status(400).json({ message: 'Can only rate confirmed or completed bookings' });
+      }
+
+      // Verify user is involved in this booking
+      const isCustomer = booking.customerId.toString() === req.user._id.toString();
+      const isProvider = booking.providerId.toString() === req.user._id.toString();
+
+      if (!isCustomer && !isProvider) {
+        return res.status(403).json({ message: 'You are not involved in this booking' });
+      }
+
+      // Store other party ID before populating (in case it's an ObjectId)
+      const otherPartyId = isCustomer ? booking.providerId : booking.customerId;
+
+      // Update booking rating tracking
+      if (isCustomer) {
+        booking.customerRated = true;
+      } else {
+        booking.providerRated = true;
+      }
+      
+      // Mark booking as completed if this is the first rating
+      // This allows the other party to see it in completed tab and rate back
+      if (booking.status !== 'completed') {
+        booking.status = 'completed';
+        
+        // Populate booking data for notifications
+        await booking.populate([
+          { path: 'serviceId', select: 'serviceName' },
+          { path: 'providerId', select: 'profile.name' },
+          { path: 'customerId', select: 'profile.name' }
+        ]);
+        
+        // Send notification to the other party that booking is completed and they can rate
+        const { createNotification } = require('../services/notificationService');
+        const raterName = isCustomer 
+          ? (booking.customerId?.profile?.name || 'Customer')
+          : (booking.providerId?.profile?.name || 'Service Provider');
+        const serviceName = booking.serviceId?.serviceName || 'Service';
+        
+        // Use the stored ID (which is an ObjectId) or the populated object's _id
+        const notificationUserId = otherPartyId._id || otherPartyId;
+        
+        await createNotification({
+          userId: notificationUserId,
+          type: 'booking',
+          title: 'Booking Completed',
+          message: `${raterName} has marked the booking for "${serviceName}" as completed and rated you. Please rate your experience.`,
+          relatedBooking: booking._id,
+          actionUrl: `/bookings/${booking._id}/rate`
+        });
+      }
+      
+      await booking.save();
+    }
+
     // Create new rating
     const rating = new Rating({
       ratedBy: req.user._id,
@@ -128,6 +196,45 @@ router.get('/given', auth, async (req, res) => {
     res.json(ratings);
   } catch (error) {
     console.error('Get given ratings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get ratings for a specific service
+router.get('/service/:serviceId', async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    const Service = require('../models/Service');
+
+    // Verify service exists
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    // Get all ratings for this service (service provider ratings)
+    const ratings = await Rating.find({
+      relatedService: serviceId,
+      ratingType: 'service_provider'
+    })
+      .populate('ratedBy', 'profile.name profile.profilePicture')
+      .populate('relatedBooking', 'reservationDate')
+      .sort({ createdAt: -1 });
+
+    // Calculate service-specific rating summary
+    const totalStars = ratings.reduce((sum, rating) => sum + rating.stars, 0);
+    const average = ratings.length > 0 ? totalStars / ratings.length : 0;
+
+    res.json({
+      ratings: ratings,
+      summary: {
+        average: Math.round(average * 10) / 10,
+        count: ratings.length,
+        totalStars: totalStars
+      }
+    });
+  } catch (error) {
+    console.error('Get service ratings error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

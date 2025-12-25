@@ -55,7 +55,15 @@ class ApiService {
     } else if (response.statusCode == 404) {
       throw ServerException('Resource not found', response.statusCode);
     } else if (response.statusCode >= 500) {
-      throw ServerException('Server error. Please try again later.', response.statusCode);
+      // Try to get specific error message from response
+      try {
+        final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+        final message = errorBody['message'] ?? 'Server error. Please try again later.';
+        throw ServerException(message, response.statusCode);
+      } catch (e) {
+        if (e is ServerException) rethrow;
+        throw ServerException('Server error. Please try again later.', response.statusCode);
+      }
     } else {
       try {
         final errorBody = response.body.isNotEmpty ? jsonDecode(response.body) : {};
@@ -343,6 +351,55 @@ class ApiService {
       Uri.parse('$baseUrl/bookings/$bookingId/status'),
       headers: _headers,
       body: jsonEncode(body),
+    ));
+  }
+
+  static Future<Map<String, dynamic>> acceptBooking(String bookingId) async {
+    return await _executeRequest(() => http.patch(
+      Uri.parse('$baseUrl/bookings/$bookingId/accept'),
+      headers: _headers,
+    ));
+  }
+
+  static Future<Map<String, dynamic>> declineBooking(String bookingId, String reason) async {
+    return await _executeRequest(() => http.patch(
+      Uri.parse('$baseUrl/bookings/$bookingId/reject'),
+      headers: _headers,
+      body: jsonEncode({
+        'rejectionReason': reason,
+      }),
+    ));
+  }
+
+  static Future<Map<String, dynamic>> initiateBookingCompletion(String bookingId) async {
+    return await _executeRequest(() => http.patch(
+      Uri.parse('$baseUrl/bookings/$bookingId/initiate-completion'),
+      headers: _headers,
+    ));
+  }
+
+  static Future<Map<String, dynamic>> confirmBookingCompletion(String bookingId) async {
+    return await _executeRequest(() => http.patch(
+      Uri.parse('$baseUrl/bookings/$bookingId/confirm-completion'),
+      headers: _headers,
+    ));
+  }
+
+  static Future<Map<String, dynamic>> updateBooking(String bookingId, Map<String, dynamic> bookingData) async {
+    return await _executeRequest(() => http.put(
+      Uri.parse('$baseUrl/bookings/$bookingId'),
+      headers: _headers,
+      body: jsonEncode(bookingData),
+    ));
+  }
+
+  static Future<Map<String, dynamic>> cancelBooking(String bookingId, {String? cancellationReason}) async {
+    return await _executeRequest(() => http.patch(
+      Uri.parse('$baseUrl/bookings/$bookingId/cancel'),
+      headers: _headers,
+      body: jsonEncode({
+        if (cancellationReason != null) 'cancellationReason': cancellationReason,
+      }),
     ));
   }
 
